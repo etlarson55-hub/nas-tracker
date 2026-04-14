@@ -178,9 +178,7 @@ td{padding:9px 12px;vertical-align:middle}
             <th>Type</th><th class="tc">$/TB</th><th class="tr">Price</th><th>Retailer</th>
           </tr>
         </thead>
-        <tbody id="tbody">
-          ${Array.from({length:8}).map(()=>`<tr>${[26,190,45,80,65,72,100].map(w=>`<td style="padding:11px 12px"><span class="sh" style="width:${w}px;height:13px"> </span></td>`).join("")}</tr>`).join("")}
-        </tbody>
+        <tbody id="tbody"></tbody>
       </table>
     </div>
   </div>
@@ -206,6 +204,9 @@ let drives=[], typeF="all", capF="all", hidden=new Set(), myChart=null;
 
 /* ── Load prices from data/prices.json ───────────────────────────── */
 async function init(){
+  // Show shimmer rows while loading
+  document.getElementById("tbody").innerHTML=
+    Array.from({length:8}).map(()=>`<tr>${[26,190,45,80,65,72,100].map(w=>`<td style="padding:11px 12px"><span class="sh" style="width:${w}px;height:13px"> </span></td>`).join("")}</tr>`).join("");
   try{
     const r=await fetch("./data/prices.json?_="+Date.now());
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
