@@ -46,6 +46,7 @@ function isTrusted(source) {
 }
 
 
+function extractCapTB(title) {
   const m = title.match(/(\d+)\s*TB/i);
   if (m) return parseInt(m[1]);
   const g = title.match(/(\d{4,5})\s*GB/i);
@@ -116,8 +117,8 @@ async function searchOne(search) {
     const ptb = price / cap;
     if (ptb < 5 || ptb > 70) continue;
 
-    // Capture URL from any field SerpAPI might use
-    const url = item.link
+    // Capture product URL from any field SerpAPI might use
+    const productUrl = item.link
       || item.product_link
       || item.url
       || item.shopping_url
@@ -131,7 +132,7 @@ async function searchOne(search) {
       price:      parseFloat(price.toFixed(2)),
       pricePerTB: parseFloat(ptb.toFixed(2)),
       retailer:   retailerLabel(src),
-      url,
+      url:        productUrl,
       rating:     item.rating || null,
       reviews:    item.reviews || null,
     });
