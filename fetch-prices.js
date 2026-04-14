@@ -1,8 +1,7 @@
 // fetch-prices.js
 // Runs server-side in GitHub Actions — calls SerpAPI and writes data/prices.json
-// Node.js 20 built-in fetch is used, no npm packages required
 
-import { writeFileSync } from "fs";
+const { writeFileSync } = require("fs");
 
 const SERP_API_KEY = process.env.SERP_API_KEY;
 if (!SERP_API_KEY) {
