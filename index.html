@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAS Drive Price Tracker</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8fafc;--surf:#fff;--b1:#e2e8f0;--b2:#f1f5f9;
+  --t1:#0f172a;--t2:#475569;--t3:#94a3b8;--t4:#64748b;
+  --acc:#0f172a;--acct:#fff;--grid:rgba(0,0,0,.04);
+  --sh1:#f1f5f9;--sh2:#e2e8f0;--hover:#f8fafc;
+  --nas-bg:#eff6ff;--nas-c:#1d4ed8;--nas-b:#bfdbfe;
+  --shk-bg:#faf5ff;--shk-c:#7c3aed;--shk-b:#e9d5ff;
+  --fc-bg:#fffbeb;--fc-b:#fde68a;--fc-c:#92400e;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0b1120;--surf:#141c2e;--b1:#1e2d45;--b2:#0f1827;
+  --t1:#e8edf5;--t2:#8899b3;--t3:#4a5a72;--t4:#5a6d87;
+  --acc:#dde4f0;--acct:#0b1120;--grid:rgba(255,255,255,.04);
+  --sh1:#141c2e;--sh2:#1a2540;--hover:#1a2540;
+  --nas-bg:#0d1e3d;--nas-c:#60a5fa;--nas-b:#1e3a5f;
+  --shk-bg:#1a0d3d;--shk-c:#c084fc;--shk-b:#2e1065;
+  --fc-bg:#1c1400;--fc-b:#5a3a00;--fc-c:#fbbf24;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.6;padding:22px;min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto}
+.btn{font-size:13px;padding:7px 15px;border-radius:8px;cursor:pointer;border:1px solid var(--b1);background:var(--surf);color:var(--t2);font-weight:500;transition:all .12s;white-space:nowrap}
+.btn:hover{background:var(--hover);border-color:var(--t3)}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+h1{font-size:21px;font-weight:700;letter-spacing:-.5px;color:var(--t1)}
+.subtitle{font-size:12px;color:var(--t3);margin-top:3px;min-height:18px}
+.update-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:20px;background:var(--b2);border:1px solid var(--b1);color:var(--t4)}
+.dot{width:7px;height:7px;border-radius:50%;background:#10b981;flex-shrink:0}
+.dot.stale{background:#f59e0b}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:16px}
+.sc{background:var(--surf);border:1px solid var(--b1);border-radius:12px;padding:16px 17px;min-width:0;overflow:hidden}
+.sc-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px}
+.sc-val{font-size:22px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;color:var(--t1);line-height:1}
+.sc-val.green{color:#10b981}
+.sc-sub{font-size:11px;color:var(--t3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ticker{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.tick-up{color:#ef4444}.tick-dn{color:#10b981}.tick-fl{color:var(--t3)}
+.tick-sub{font-size:10px;font-weight:400;color:var(--t3);margin-left:1px}
+.card{background:var(--surf);border:1px solid var(--b1);border-radius:13px;padding:20px;margin-bottom:16px}
+.card-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.sec-title{font-size:15px;font-weight:600;color:var(--t1)}
+.sec-sub{font-size:12px;color:var(--t4);margin-top:2px;line-height:1.5}
+.filters{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.pill{font-size:12px;padding:5px 13px;border-radius:20px;cursor:pointer;border:1px solid var(--b1);background:transparent;color:var(--t4);transition:all .1s;white-space:nowrap}
+.pill:hover{border-color:var(--t3);color:var(--t1)}
+.pill.on{background:var(--acc);color:var(--acct);border-color:var(--acc);font-weight:500}
+.fdiv{width:1px;background:var(--b1);height:20px;flex-shrink:0;margin:0 3px}
+.chart-area{position:relative;height:275px;margin-bottom:14px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:4px;padding-top:13px;border-top:1px solid var(--b2)}
+.leg-btn{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t4);background:none;border:none;cursor:pointer;padding:3px 7px;border-radius:5px;transition:all .1s}
+.leg-btn:hover{background:var(--hover)}.leg-btn.off{opacity:.3;text-decoration:line-through}
+.leg-line{display:inline-block;width:18px;height:2.5px;border-radius:2px;flex-shrink:0}
+.fc-badge{font-size:11px;padding:3px 9px;border-radius:6px;background:var(--fc-bg);border:1px solid var(--fc-b);color:var(--fc-c);font-weight:500;white-space:nowrap;align-self:flex-start}
+.tbl-outer{overflow-x:auto;margin:0 -20px;padding:0 20px}
+table{width:100%;border-collapse:collapse;min-width:560px}
+thead th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);padding:0 12px 10px;text-align:left;border-bottom:1px solid var(--b2);white-space:nowrap;font-weight:500}
+.tc{text-align:center}.tr{text-align:right}
+tbody tr{border-bottom:1px solid var(--b2);transition:background .07s}
+tbody tr:hover td{background:var(--hover)}
+td{padding:9px 12px;vertical-align:middle}
+.dn{font-weight:600;color:var(--t1);font-size:13px}
+.dc{font-size:11px;color:var(--t3);margin-top:1px}
+.rb{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0}
+.r1{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+.r2{background:var(--hover);color:var(--t2);border:1px solid var(--b1)}
+.r3{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+.rn{color:var(--t3);font-size:12px;width:26px;display:inline-block;text-align:center}
+.tb{font-size:10px;padding:2px 8px;border-radius:5px;font-weight:500;white-space:nowrap}
+.nas-b{background:var(--nas-bg);color:var(--nas-c);border:1px solid var(--nas-b)}
+.shk-b{background:var(--shk-bg);color:var(--shk-c);border:1px solid var(--shk-b)}
+.ptb-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.g{color:#10b981}.a{color:#f59e0b}.m{color:var(--t3)}
+.mono{font-variant-numeric:tabular-nums}
+.rl{color:#3b82f6;text-decoration:none;font-size:12px}.rl:hover{text-decoration:underline}
+#emptyState{padding:3rem;text-align:center;color:var(--t3);font-size:13px;line-height:1.8}
+/* Email panel */
+#emailPanel{display:none;background:var(--surf);border:1px solid var(--b1);border-radius:13px;padding:20px 24px;margin-bottom:16px}
+.ep-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+@media(max-width:520px){.ep-grid{grid-template-columns:1fr}}
+.ep-field label{font-size:11px;font-weight:500;color:var(--t2);display:block;margin-bottom:5px}
+.ep-field input{width:100%;font-size:13px;padding:7px 10px;border:1px solid var(--b1);border-radius:8px;background:var(--bg);color:var(--t1);font-family:monospace}
+.ep-field input:focus{outline:none;border-color:#3b82f6}
+.ep-note{font-size:11px;color:var(--t3);margin-bottom:12px;line-height:1.8}
+.ep-note a{color:#3b82f6}.ep-note b{color:var(--t2);font-weight:500}
+.ep-status{font-size:12px;margin-top:10px;min-height:18px;color:var(--t3)}
+.ep-status.ok{color:#10b981}.ep-status.err{color:#ef4444}
+@keyframes shim{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.sh{background:linear-gradient(90deg,var(--sh1) 25%,var(--sh2) 50%,var(--sh1) 75%);background-size:1200px 100%;animation:shim 1.5s infinite linear;border-radius:4px;display:inline-block}
+.footer{font-size:11px;color:var(--t3);text-align:center;margin-top:8px;line-height:1.9}
+</style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<div class="wrap">
+
+  <header class="hdr">
+    <div>
+      <h1>NAS &amp; Storage Drive Tracker</h1>
+      <p class="subtitle" id="sub">Loading prices…</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div id="updatePill"></div>
+      <button class="btn" onclick="toggleEmail()">✉ Alerts</button>
+    </div>
+  </header>
+
+  <!-- Email setup panel -->
+  <div id="emailPanel">
+    <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">✉ Email Notifications</div>
+    <div class="ep-note">
+      Free email alerts via <a href="https://emailjs.com" target="_blank">EmailJS</a> (200/month free). 
+      <b>Template body must contain <code>{{{html_body}}}</code> and subject field <code>{{subject}}</code>.</b>
+      Your settings are saved in your browser.
+    </div>
+    <div class="ep-grid">
+      <div class="ep-field"><label>EmailJS Public Key</label><input id="ejsKey" type="password" placeholder="e.g. user_abc123…" /></div>
+      <div class="ep-field"><label>Service ID</label><input id="ejsSvc" type="text" placeholder="e.g. service_xyz…" /></div>
+      <div class="ep-field"><label>Template ID</label><input id="ejsTpl" type="text" placeholder="e.g. template_abc…" /></div>
+      <div class="ep-field"><label>Send to</label><input id="ejsTo" type="email" placeholder="you@email.com" /></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn" onclick="saveEmail()" style="background:var(--acc);color:var(--acct);border-color:var(--acc)">Save</button>
+      <button class="btn" onclick="testEmail()">Send Test</button>
+      <button class="btn" onclick="toggleEmail()">Close</button>
+    </div>
+    <div class="ep-status" id="epStatus"></div>
+  </div>
+
+  <div class="stats" id="stats">
+    ${["Market Avg $/TB","Best Overall","Best NAS Drive","Best Shuckable"].map(l=>`
+    <div class="sc"><div class="sc-label">${l}</div>
+      <span class="sh" style="width:65%;height:22px;margin:5px 0;display:block"> </span>
+      <span class="sh" style="width:80%;height:11px;display:block"> </span>
+    </div>`).join("")}
+  </div>
+
+  <div class="card">
+    <div class="card-hd">
+      <div>
+        <div class="sec-title">12-Month Price Trend + 3-Month Forecast</div>
+        <div class="sec-sub">$/TB across top 10 drives · Dashed = forecast · Click legend to toggle</div>
+      </div>
+      <span class="fc-badge">May–Jul '26 forecast</span>
+    </div>
+    <div class="chart-area"><canvas id="chart"></canvas></div>
+    <div class="chart-legend" id="legend"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">
+      <div>
+        <div class="sec-title">Best Value Drives — Top 20</div>
+        <div class="sec-sub">Ranked by $/TB · WD, Seagate, Toshiba, HGST only · Updated daily · Click links to confirm price before buying</div>
+      </div>
+      <div class="filters">
+        <button class="pill on" data-k="type" data-v="all"      onclick="setF(this)">All Types</button>
+        <button class="pill"    data-k="type" data-v="internal" onclick="setF(this)">NAS (Internal)</button>
+        <button class="pill"    data-k="type" data-v="external" onclick="setF(this)">Shuckable</button>
+        <div class="fdiv"></div>
+        <button class="pill on" data-k="cap"  data-v="all"  onclick="setF(this)">All Sizes</button>
+        <button class="pill"    data-k="cap"  data-v="4-6"  onclick="setF(this)">4–6 TB</button>
+        <button class="pill"    data-k="cap"  data-v="8-12" onclick="setF(this)">8–12 TB</button>
+      </div>
+    </div>
+    <div id="lastUpdated" style="font-size:11px;color:var(--t3);margin-bottom:12px;display:none"></div>
+    <div class="tbl-outer">
+      <table>
+        <thead>
+          <tr>
+            <th class="tc">#</th><th>Drive</th><th class="tc">Cap</th>
+            <th>Type</th><th class="tc">$/TB</th><th class="tr">Price</th><th>Retailer</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          ${Array.from({length:8}).map(()=>`<tr>${[26,190,45,80,65,72,100].map(w=>`<td style="padding:11px 12px"><span class="sh" style="width:${w}px;height:13px"> </span></td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="footer">
+    Prices fetched daily from Google Shopping via SerpAPI · Amazon, Newegg, Best Buy &amp; B&amp;H Photo<br>
+    Always click the retailer link to confirm price before buying — prices can change between daily updates<br>
+    Trend chart uses modeled historical data anchored to daily fetched prices · Forecast is indicative only
+  </p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const LC=["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#64748b"];
+const AC="#00c896";
+const MONTHS=["Apr '25","May '25","Jun '25","Jul '25","Aug '25","Sep '25","Oct '25","Nov '25","Dec '25","Jan '26","Feb '26","Mar '26","Apr '26","May '26","Jun '26","Jul '26"];
+const TI=12;
+const HF=[0.800,0.848,0.822,0.838,0.854,0.869,0.878,0.865,0.892,0.921,0.949,0.975,1.000,0.982,0.964,0.947];
+
+const SK={hist:"nas-gh-hist",ejs_key:"nas-ejs-key",ejs_svc:"nas-ejs-svc",ejs_tpl:"nas-ejs-tpl",ejs_to:"nas-ejs-to",last_seen:"nas-gh-last-seen"};
+
+let drives=[], typeF="all", capF="all", hidden=new Set(), myChart=null;
+
+/* ── Load prices from data/prices.json ───────────────────────────── */
+async function init(){
+  try{
+    const r=await fetch("./data/prices.json?_="+Date.now());
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data=await r.json();
+
+    if(!data.drives||!data.drives.length){
+      document.getElementById("sub").textContent="No price data yet — GitHub Actions hasn't run its first fetch.";
+      document.getElementById("tbody").innerHTML=`<tr><td colspan="7"><div id="emptyState">Price data will appear here after the first scheduled GitHub Actions run.<br>You can trigger it manually from the Actions tab in your GitHub repository.</div></td></tr>`;
+      return;
+    }
+
+    drives=data.drives;
+    saveHist(drives);
+    maybeNotify(data.updatedAt);
+    drawStats(data.updatedAt);
+    drawChart();
+    drawTable();
+    drawUpdatePill(data.updatedAt);
+
+    const d=new Date(data.updatedAt);
+    document.getElementById("sub").textContent=
+      `${drives.length} drives ranked by $/TB · Prices from ${d.toLocaleDateString(undefined,{month:"short",day:"numeric"})} at ${d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`;
+    const lu=document.getElementById("lastUpdated");
+    lu.textContent=`Prices fetched ${d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})} · Updated daily automatically · Always confirm price on retailer site before buying`;
+    lu.style.display="block";
+
+  }catch(e){
+    document.getElementById("sub").textContent="Failed to load prices: "+e.message;
+    document.getElementById("tbody").innerHTML=`<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--t3)">Could not load price data. Make sure GitHub Actions has run at least once.</td></tr>`;
+  }
+}
+
+/* ── History & tickers ───────────────────────────────────────────── */
+function saveHist(d){
+  try{
+    const h=JSON.parse(localStorage.getItem(SK.hist)||"[]");
+    h.unshift({ts:Date.now(),drives:d});
+    localStorage.setItem(SK.hist,JSON.stringify(h.slice(0,60)));
+  }catch{}
+}
+function loadHist(){try{return JSON.parse(localStorage.getItem(SK.hist)||"[]");}catch{return [];}}
+
+function weekAgoSnap(){
+  const h=loadHist(); if(h.length<2) return null;
+  const target=Date.now()-604800000;
+  let best=null,bestD=Infinity;
+  h.forEach(s=>{const d=Math.abs(s.ts-target);if(d<bestD){bestD=d;best=s;}});
+  if(!best) return null;
+  const age=Date.now()-best.ts;
+  if(age<86400000||age>1209600000) return null;
+  return best;
+}
+
+function computeTicker(currentPtb,type){
+  if(currentPtb==null) return null;
+  const snap=weekAgoSnap();
+  let weekPtb=null;
+  if(snap){
+    const sub=type?snap.drives.filter(d=>d.type===type):snap.drives;
+    if(sub.length) weekPtb=Math.min(...sub.map(d=>d.pricePerTB));
+  }
+  if(!weekPtb){
+    const wf=HF[11]+(HF[12]-HF[11])*(1-7/30);
+    weekPtb=currentPtb*(wf/HF[12]);
+  }
+  return{pct:((currentPtb-weekPtb)/weekPtb)*100};
+}
+
+function tickerHTML(t){
+  if(!t) return`<div class="ticker tick-fl"><span>—</span><span class="tick-sub">no history yet</span></div>`;
+  const abs=Math.abs(t.pct).toFixed(1);
+  if(Math.abs(t.pct)<0.05) return`<div class="ticker tick-fl"><span>→ 0.0%</span><span class="tick-sub">vs 7 days ago</span></div>`;
+  if(t.pct>0) return`<div class="ticker tick-up"><span>▲ +${abs}%</span><span class="tick-sub">vs 7 days ago</span></div>`;
+  return`<div class="ticker tick-dn"><span>▼ −${abs}%</span><span class="tick-sub">vs 7 days ago</span></div>`;
+}
+
+/* ── Update pill ─────────────────────────────────────────────────── */
+function drawUpdatePill(updatedAt){
+  const pill=document.getElementById("updatePill");
+  if(!updatedAt){pill.innerHTML="";return;}
+  const hrs=Math.round((Date.now()-new Date(updatedAt))/3600000);
+  const fresh=hrs<26;
+  const label=hrs<1?"just now":hrs<24?`${hrs}h ago`:`${Math.round(hrs/24)}d ago`;
+  pill.innerHTML=`<div class="update-pill"><div class="dot ${fresh?"":"stale"}"></div>Updated ${label} · refreshes daily</div>`;
+}
+
+/* ── Stats ───────────────────────────────────────────────────────── */
+function drawStats(updatedAt){
+  const avg=drives.reduce((s,d)=>s+d.pricePerTB,0)/drives.length;
+  const best=drives[0],bNAS=drives.find(d=>d.type==="internal"),bShk=drives.find(d=>d.type==="external");
+  document.getElementById("stats").innerHTML=`
+    <div class="sc"><div class="sc-label">Market Avg $/TB</div><div class="sc-val">$${avg.toFixed(2)}</div><div class="sc-sub">across ${drives.length} drives</div>${tickerHTML(computeTicker(avg,null))}</div>
+    <div class="sc"><div class="sc-label">Best Overall</div><div class="sc-val green">$${best.pricePerTB.toFixed(2)}/TB</div><div class="sc-sub" title="${best.name}">${best.name}</div>${tickerHTML(computeTicker(best.pricePerTB,null))}</div>
+    <div class="sc"><div class="sc-label">Best NAS Drive</div><div class="sc-val">${bNAS?`$${bNAS.pricePerTB.toFixed(2)}/TB`:"—"}</div><div class="sc-sub" title="${bNAS?.name||""}">${bNAS?.name||"—"}</div>${tickerHTML(computeTicker(bNAS?.pricePerTB,"internal"))}</div>
+    <div class="sc"><div class="sc-label">Best Shuckable</div><div class="sc-val">${bShk?`$${bShk.pricePerTB.toFixed(2)}/TB`:"—"}</div><div class="sc-sub" title="${bShk?.name||""}">${bShk?.name||"—"}</div>${tickerHTML(computeTicker(bShk?.pricePerTB,"external"))}</div>`;
+}
+
+/* ── Chart ───────────────────────────────────────────────────────── */
+function buildChartData(){
+  const top=drives.slice(0,10);
+  return MONTHS.map((m,i)=>{
+    const f=HF[i];let sum=0;const row={m};
+    top.forEach((d,di)=>{const n=1+Math.sin(di*1.83+i*0.71)*0.038;row["d"+di]=parseFloat((d.pricePerTB*f*n).toFixed(2));sum+=row["d"+di];});
+    row.avg=parseFloat((sum/top.length).toFixed(2));
+    return row;
+  });
+}
+
+function drawChart(){
+  const top=drives.slice(0,10),cd=buildChartData();
+  const dark=window.matchMedia("(prefers-color-scheme:dark)").matches;
+  const gc=dark?"rgba(255,255,255,.04)":"rgba(0,0,0,.04)",lc=dark?"#3a4a62":"#94a3b8";
+  const datasets=top.map((d,i)=>({
+    label:d.name,data:cd.map(r=>r["d"+i]),borderColor:LC[i],borderWidth:1.2,tension:0.4,
+    pointRadius:0,pointHoverRadius:3,hidden:hidden.has(i),
+    segment:{borderDash:ctx=>ctx.p0DataIndex>=TI?[5,5]:undefined,borderColor:ctx=>LC[i]+(ctx.p0DataIndex>=TI?"77":"99")}
+  }));
+  datasets.push({
+    label:"Market average",data:cd.map(r=>r.avg),borderColor:AC,borderWidth:3.5,tension:0.4,
+    pointRadius:0,pointHoverRadius:6,
+    segment:{borderDash:ctx=>ctx.p0DataIndex>=TI?[6,4]:undefined,borderColor:ctx=>ctx.p0DataIndex>=TI?AC+"aa":AC}
+  });
+  const shade={id:"shade",beforeDraw(ch){
+    if(!ch.chartArea)return;
+    const{ctx:c,chartArea,scales}=ch;
+    const x1=(scales.x.getPixelForValue(TI)+scales.x.getPixelForValue(TI+1))/2;
+    c.save();c.fillStyle=dark?"rgba(245,158,11,.05)":"rgba(245,158,11,.07)";
+    c.fillRect(x1,chartArea.top,chartArea.right-x1,chartArea.bottom-chartArea.top);c.restore();
+  }};
+  if(myChart)myChart.destroy();
+  myChart=new Chart(document.getElementById("chart").getContext("2d"),{
+    type:"line",data:{labels:MONTHS,datasets},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:dark?"#141c2e":"#fff",borderColor:dark?"#1e2d45":"#e2e8f0",borderWidth:1,titleColor:dark?"#e8edf5":"#0f172a",bodyColor:dark?"#8899b3":"#64748b",padding:12,callbacks:{label:ctx=>` ${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2)}/TB`}}},
+      scales:{x:{grid:{display:false},border:{color:gc},ticks:{color:lc,font:{size:11},maxRotation:0}},y:{grid:{color:gc},border:{display:false},ticks:{color:lc,font:{size:11},callback:v=>"$"+v}}}},
+    plugins:[shade]
+  });
+  const lg=document.getElementById("legend");lg.innerHTML="";
+  top.forEach((d,i)=>{
+    const b=document.createElement("button");b.className="leg-btn"+(hidden.has(i)?" off":"");
+    b.innerHTML=`<span class="leg-line" style="background:${LC[i]};opacity:0.75"></span>${d.name}`;
+    b.onclick=()=>{hidden.has(i)?hidden.delete(i):hidden.add(i);myChart.data.datasets[i].hidden=hidden.has(i);myChart.update("none");b.classList.toggle("off");};
+    lg.appendChild(b);
+  });
+  const ab=document.createElement("div");ab.className="leg-btn";ab.style.cssText=`cursor:default;font-weight:600;color:${AC}`;
+  ab.innerHTML=`<span class="leg-line" style="background:${AC};height:3.5px"></span>Market average`;lg.appendChild(ab);
+}
+
+/* ── Table ───────────────────────────────────────────────────────── */
+function ptbCls(ptb,avg){const r=ptb/avg;return r<=.88?"g":r<=1.02?"a":"m";}
+
+function drawTable(){
+  const avg=drives.reduce((s,d)=>s+d.pricePerTB,0)/drives.length;
+  const rows=drives.filter(d=>{
+    if(typeF==="internal"&&d.type!=="internal")return false;
+    if(typeF==="external"&&d.type!=="external")return false;
+    if(capF==="4-6"&&d.capacity>6)return false;
+    if(capF==="8-12"&&d.capacity<8)return false;
+    return true;
+  });
+  if(!rows.length){
+    document.getElementById("tbody").innerHTML=`<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--t3)">No drives match this filter.</td></tr>`;
+    return;
+  }
+  document.getElementById("tbody").innerHTML=rows.map(d=>{
+    const rk=d.rank<=3?`<span class="rb r${d.rank}">${d.rank}</span>`:`<span class="rn">${d.rank}</span>`;
+    const tp=d.type==="internal"?`<span class="tb nas-b">NAS</span>`:`<span class="tb shk-b">Shuckable</span>`;
+    const rt=d.url?`<a class="rl" href="${d.url}" target="_blank" rel="noopener">${d.retailer} ↗</a>`:`<span style="color:var(--t3);font-size:12px">${d.retailer}</span>`;
+    const rating=d.rating?` · ★ ${d.rating}${d.reviews?" ("+d.reviews.toLocaleString()+")":""}` : "";
+    return`<tr><td class="tc">${rk}</td><td><div class="dn">${d.name}</div><div class="dc">${d.brand}${rating}</div></td><td class="tc mono" style="font-size:12px">${d.capacity}TB</td><td>${tp}</td><td class="tc"><span class="ptb-val ${ptbCls(d.pricePerTB,avg)}">$${d.pricePerTB.toFixed(2)}</span></td><td class="tr mono">$${d.price.toFixed(2)}</td><td>${rt}</td></tr>`;
+  }).join("");
+}
+
+function setF(btn){
+  const k=btn.dataset.k,v=btn.dataset.v;
+  if(k==="type")typeF=v;else capF=v;
+  document.querySelectorAll(`.pill[data-k="${k}"]`).forEach(p=>p.classList.remove("on"));
+  btn.classList.add("on");
+  if(drives.length)drawTable();
+}
+
+/* ── EmailJS ─────────────────────────────────────────────────────── */
+function getEjs(){return{key:localStorage.getItem(SK.ejs_key)||"",svc:localStorage.getItem(SK.ejs_svc)||"",tpl:localStorage.getItem(SK.ejs_tpl)||"",to:localStorage.getItem(SK.ejs_to)||""};}
+
+function toggleEmail(){
+  const p=document.getElementById("emailPanel");
+  const open=p.style.display==="block";
+  p.style.display=open?"none":"block";
+  if(!open){
+    const e=getEjs();
+    document.getElementById("ejsKey").value=e.key;
+    document.getElementById("ejsSvc").value=e.svc;
+    document.getElementById("ejsTpl").value=e.tpl;
+    document.getElementById("ejsTo").value=e.to;
+    document.getElementById("epStatus").textContent="";
+    document.getElementById("epStatus").className="ep-status";
+  }
+}
+
+function saveEmail(){
+  const k=document.getElementById("ejsKey").value.trim();
+  const s=document.getElementById("ejsSvc").value.trim();
+  const t=document.getElementById("ejsTpl").value.trim();
+  const r=document.getElementById("ejsTo").value.trim();
+  if(!k||!s||!t||!r){setEpStatus("Please fill in all four fields.","err");return;}
+  localStorage.setItem(SK.ejs_key,k);localStorage.setItem(SK.ejs_svc,s);
+  localStorage.setItem(SK.ejs_tpl,t);localStorage.setItem(SK.ejs_to,r);
+  setEpStatus("Saved. Use 'Send Test' to verify.","ok");
+}
+
+function setEpStatus(msg,cls){const el=document.getElementById("epStatus");el.textContent=msg;el.className="ep-status "+(cls||"");}
+
+// Send email if this is new price data (compare updatedAt to last seen)
+function maybeNotify(updatedAt){
+  if(!updatedAt)return;
+  const lastSeen=localStorage.getItem(SK.last_seen);
+  if(lastSeen===updatedAt)return; // already notified for this update
+  localStorage.setItem(SK.last_seen,updatedAt);
+  // Small delay to let page render first
+  setTimeout(()=>sendEmail(false).catch(()=>{}), 3000);
+}
+
+async function testEmail(){
+  setEpStatus("Sending…","");
+  try{await sendEmail(true);setEpStatus("Test sent! Check your inbox and spam folder.","ok");}
+  catch(e){setEpStatus("Failed: "+e.message,"err");}
+}
+
+function buildEmailHTML(isTest){
+  const avg=drives.reduce((s,d)=>s+d.pricePerTB,0)/drives.length;
+  const top3=drives.slice(0,3),hist=loadHist();
+  const deals=drives.filter(d=>d.pricePerTB/avg<=0.85);
+  const recent=hist.slice(0,5).map(s=>({date:new Date(s.ts),avg:s.drives.reduce((a,d)=>a+d.pricePerTB,0)/s.drives.length}));
+  const trendDir=recent.length>=2?(recent[0].avg<recent[recent.length-1].avg?"falling":"rising"):"stable";
+  const trendPct=recent.length>=2?Math.abs(((recent[0].avg-recent[recent.length-1].avg)/recent[recent.length-1].avg)*100):0;
+  const trendColor=trendDir==="falling"?"#10b981":trendDir==="rising"?"#ef4444":"#94a3b8";
+  const snap=weekAgoSnap();
+  const weekAvg=snap?snap.drives.reduce((s,d)=>s+d.pricePerTB,0)/snap.drives.length:null;
+  const weekPct=weekAvg?((avg-weekAvg)/weekAvg*100):null;
+  const weekStr=weekPct!=null?(weekPct>0.05?`▲ +${weekPct.toFixed(1)}%`:weekPct<-0.05?`▼ ${weekPct.toFixed(1)}%`:"→ 0.0%"):"—";
+  const weekColor=weekPct!=null&&weekPct<0?"#10b981":weekPct!=null&&weekPct>0?"#ef4444":"#94a3b8";
+  const dateStr=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  const rb=r=>r===1?`style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#fef3c7;border:1px solid #fcd34d;font-size:11px;font-weight:700;color:#92400e;flex-shrink:0"`:r===2?`style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#f1f5f9;border:1px solid #e2e8f0;font-size:11px;font-weight:700;color:#475569;flex-shrink:0"`:`style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#fff7ed;border:1px solid #fed7aa;font-size:11px;font-weight:700;color:#9a3412;flex-shrink:0"`;
+  const dCard=(d,isTop)=>{const bg=isTop?"#f0fdf4":"#fff",bdr=isTop?"1px solid #bbf7d0":"1px solid #e2e8f0",nc=isTop?"#166534":"#0f172a",sc=isTop?"#166534":"#64748b",pc=isTop?"#10b981":"#0f172a",bb=isTop?"#166534":"#0f172a";return`<div style="background:${bg};border:${bdr};border-radius:10px;padding:14px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div style="display:flex;align-items:center;gap:10px"><span ${rb(d.rank)}>${d.rank}</span><div><div style="font-size:14px;font-weight:600;color:${nc};margin-bottom:2px">${d.name}</div><div style="font-size:11px;color:${sc}">${d.brand} · ${d.type==="internal"?"NAS":"Shuckable"} · ${d.retailer}</div></div></div><div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-size:18px;font-weight:700;color:${pc}">$${d.pricePerTB.toFixed(2)}<span style="font-size:12px;font-weight:400;color:${sc}">/TB</span></div><div style="font-size:12px;color:${sc}">$${d.price.toFixed(2)} total</div></div></div>${d.url?`<a href="${d.url}" style="display:inline-block;font-size:12px;padding:5px 13px;border-radius:6px;background:${bb};color:#fff;text-decoration:none;font-weight:500">View on ${d.retailer} →</a>`:""}</div>`;};
+  const dealSec=deals.length?`<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:13px 16px;margin-bottom:20px;display:flex;gap:12px"><div style="width:8px;height:8px;background:#10b981;border-radius:50%;margin-top:5px;flex-shrink:0"></div><div><div style="font-size:13px;font-weight:600;color:#166534;margin-bottom:3px">${deals.length===1?"Significant deal detected":deals.length+" significant deals detected"}</div><div style="font-size:12px;color:#166534;line-height:1.7">${deals.map(d=>`<strong>${d.name}</strong> at <strong>$${d.pricePerTB.toFixed(2)}/TB ($${d.price.toFixed(2)})</strong> on ${d.retailer} — ${Math.round((1-d.pricePerTB/avg)*100)}% below market average`).join("<br>")}</div></div></div>`:"";
+  const trendRows=recent.map((r,i)=>{const maxA=Math.max(...recent.map(x=>x.avg));const pct=Math.round((r.avg/maxA)*100);const isT=i===0;return`<tr><td style="font-size:11px;color:#94a3b8;padding:5px 0;white-space:nowrap;width:64px">${r.date.toLocaleDateString("en-US",{month:"short",day:"numeric"})}${isT?" ←":""}</td><td style="padding:5px 10px"><div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isT?trendColor:"#cbd5e1"};border-radius:3px"></div></div></td><td style="font-size:12px;font-weight:${isT?600:400};color:${isT?trendColor:"#64748b"};text-align:right;white-space:nowrap;padding:5px 0">$${r.avg.toFixed(2)}/TB</td></tr>`;}).join("");
+  return`<!DOCTYPE html><html><body style="margin:0;padding:20px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif">${isTest?`<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:#92400e;font-weight:500">This is a test email from NAS Drive Price Tracker</div>`:""}<div style="max-width:580px;margin:0 auto;background:#fff;border-radius:13px;border:1px solid #e2e8f0;overflow:hidden"><div style="background:#0f172a;padding:22px 28px"><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:5px">NAS Drive Price Tracker</div><div style="font-size:20px;font-weight:700;color:#f1f5f9;letter-spacing:-0.3px">Daily Price Update</div><div style="font-size:12px;color:#64748b;margin-top:4px">${dateStr} · Amazon, Newegg, Best Buy &amp; B&amp;H</div></div><div style="display:flex;border-bottom:1px solid #f1f5f9"><div style="flex:1;padding:14px 20px;border-right:1px solid #f1f5f9"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:4px">Market avg $/TB</div><div style="font-size:18px;font-weight:700;color:#0f172a">$${avg.toFixed(2)}</div><div style="font-size:11px;color:${weekColor};margin-top:2px;font-weight:500">${weekStr} vs last week</div></div><div style="flex:1;padding:14px 20px;border-right:1px solid #f1f5f9"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:4px">Best overall $/TB</div><div style="font-size:18px;font-weight:700;color:#10b981">$${drives[0].pricePerTB.toFixed(2)}</div><div style="font-size:11px;color:#64748b;margin-top:2px">${drives[0].name}</div></div><div style="flex:1;padding:14px 20px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:4px">30-day trend</div><div style="font-size:18px;font-weight:700;color:${trendColor}">${trendDir.charAt(0).toUpperCase()+trendDir.slice(1)}</div><div style="font-size:11px;color:${trendColor};margin-top:2px;font-weight:500">${trendDir==="falling"?`▼ Down ${trendPct.toFixed(1)}%`:trendDir==="rising"?`▲ Up ${trendPct.toFixed(1)}%`:"→ Stable"} over 30 days</div></div></div><div style="padding:22px 28px">${dealSec}<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:12px;font-weight:500">Top 3 best value drives today</div>${top3.map((d,i)=>dCard(d,i===0)).join("")}${recent.length>=2?`<div style="margin-top:20px"><div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:12px;font-weight:500">Recent price history (market avg $/TB)</div><div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px"><table style="width:100%;border-collapse:collapse">${trendRows}</table><div style="font-size:11px;color:${trendColor};font-weight:500;text-align:right;margin-top:8px">${trendDir==="falling"?"Market average is trending down — good time to watch for deals":trendDir==="rising"?"Market average is rising — consider buying sooner rather than later":"Prices are relatively stable"}</div></div></div>`:""}<div style="border-top:1px solid #f1f5f9;padding-top:16px;margin-top:20px"><p style="font-size:11px;color:#94a3b8;line-height:1.8;margin:0">Prices from Google Shopping. Always confirm on the retailer page before buying.<br><br>You're receiving this because you enabled email alerts in NAS Drive Price Tracker.</p></div></div></div></body></html>`;
+}
+
+async function sendEmail(isTest=false){
+  const e=getEjs();
+  if(!e.key||!e.svc||!e.tpl||!e.to) return;
+  if(!drives.length) return;
+  emailjs.init({publicKey:e.key});
+  const html=buildEmailHTML(isTest);
+  const subj=isTest?"[Test] NAS Drive Price Tracker":`NAS Drive Update · Best: $${drives[0].pricePerTB.toFixed(2)}/TB · ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
+  const res=await emailjs.send(e.svc,e.tpl,{to_email:e.to,subject:subj,html_body:html});
+  if(res.status!==200) throw new Error(`EmailJS ${res.status}: ${res.text}`);
+}
+
+init();
+</script>
+</body>
+</html>
