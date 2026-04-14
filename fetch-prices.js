@@ -21,7 +21,32 @@ const SEARCHES = [
   { q: "Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB",type:"external", brand: "Seagate"        },
 ];
 
-function extractCapTB(title) {
+// Only accept results from these retailers — everything else (eBay, Poshmark, Mercari, etc.) is rejected
+const TRUSTED_RETAILERS = [
+  "amazon",
+  "newegg",
+  "best buy",
+  "bestbuy",
+  "b&h",
+  "bhphoto",
+  "bh photo",
+  "adorama",
+  "walmart",
+  "costco",
+  "bhphotovideo",
+  "micro center",
+  "microcenter",
+  "antonline",
+  "tiger direct",
+];
+
+function isTrusted(source) {
+  if (!source) return false;
+  const s = source.toLowerCase();
+  return TRUSTED_RETAILERS.some(r => s.includes(r));
+}
+
+
   const m = title.match(/(\d+)\s*TB/i);
   if (m) return parseInt(m[1]);
   const g = title.match(/(\d{4,5})\s*GB/i);
@@ -73,6 +98,14 @@ async function searchOne(search) {
   const out = [];
   for (const item of raw) {
     const title = item.title || "";
+
+    // Reject non-trusted retailers immediately
+    const src = item.source || item.seller || item.store || "";
+    if (!isTrusted(src)) {
+      console.log(`    Skipped (${src || "unknown source"}): ${title.slice(0, 50)}`);
+      continue;
+    }
+
     const cap = extractCapTB(title);
     if (!cap || cap < 4 || cap > 14) continue;
 
@@ -84,7 +117,13 @@ async function searchOne(search) {
     const ptb = price / cap;
     if (ptb < 5 || ptb > 70) continue;
 
-    const src = item.source || "";
+    // Capture URL from any field SerpAPI might use
+    const url = item.link
+      || item.product_link
+      || item.url
+      || item.shopping_url
+      || null;
+
     out.push({
       name:       cleanName(title, brand, cap),
       brand,
@@ -93,7 +132,7 @@ async function searchOne(search) {
       price:      parseFloat(price.toFixed(2)),
       pricePerTB: parseFloat(ptb.toFixed(2)),
       retailer:   retailerLabel(src),
-      url:        item.link || null,
+      url,
       rating:     item.rating || null,
       reviews:    item.reviews || null,
     });
