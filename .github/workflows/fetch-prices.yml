@@ -24,7 +24,7 @@ jobs:
       - name: Fetch prices from SerpAPI
         env:
           SERP_API_KEY: ${{ secrets.SERP_API_KEY }}
-        run: node --input-type=module < fetch-prices.js
+        run: node fetch-prices.js
 
       - name: Commit updated prices.json
         run: |
