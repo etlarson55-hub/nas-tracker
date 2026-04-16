@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-04-15T17:48:08.974Z",
+  "updatedAt": "2026-04-16T18:00:37.759Z",
   "drives": [
     {
-      "name": "Seagate Expansion 8TB",
+      "name": "Seagate 4TB",
       "brand": "Seagate",
-      "capacity": 8,
-      "type": "external",
-      "price": 119,
-      "pricePerTB": 14.88,
-      "retailer": "Walmart",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:10888011860869679761,headlineOfferDocid:2429790378414424265,imageDocid:7136158291407479418,rds:PC_14231916617688967024|PROD_PC_14231916617688967024,gpcid:6813344277777151715,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4.4,
-      "reviews": 4200,
+      "capacity": 4,
+      "type": "internal",
+      "price": 130,
+      "pricePerTB": 32.5,
+      "retailer": "Newegg",
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf NAS internal hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:2185328820287029874,headlineOfferDocid:9907551105822279566,imageDocid:3075639250781474136,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": null,
+      "reviews": null,
       "rank": 1
     },
     {
@@ -28,19 +28,6 @@
       "rank": 2
     },
     {
-      "name": "Seagate 4TB",
-      "brand": "Seagate",
-      "capacity": 4,
-      "type": "internal",
-      "price": 144,
-      "pricePerTB": 36,
-      "retailer": "Newegg",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf NAS internal hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:7725295132042703467,headlineOfferDocid:13996520511998177439,imageDocid:3495940629463419472,rds:PC_4660085494467621574|PROD_PC_4660085494467621574,gpcid:4660085494467621574,mid:576462887687594715,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4.1,
-      "reviews": 34,
-      "rank": 3
-    },
-    {
       "name": "Seagate Expansion 4TB",
       "brand": "Seagate",
       "capacity": 4,
@@ -48,23 +35,10 @@
       "price": 150,
       "pricePerTB": 37.5,
       "retailer": "Walmart",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:14512833945581469759,headlineOfferDocid:15759271930432033974,imageDocid:13261432014527815209,rds:PC_3520019128635291477|PROD_PC_3520019128635291477,gpcid:3520019128635291477,mid:576462875053607293,pvt:hg&hl=en&gl=us&udm=28",
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:14512833945581469759,headlineOfferDocid:15759271930432033974,imageDocid:13261432014527815209,rds:PC_3520019128635291477|PROD_PC_3520019128635291477,pvt:hg&hl=en&gl=us&udm=28",
       "rating": 4.6,
       "reviews": 7,
-      "rank": 4
-    },
-    {
-      "name": "Seagate Exos 4TB",
-      "brand": "Seagate",
-      "capacity": 4,
-      "type": "internal",
-      "price": 185,
-      "pricePerTB": 46.25,
-      "retailer": "Newegg",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf NAS internal hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:10761246942991725007,headlineOfferDocid:15977183138014298587,imageDocid:16020000469513438060,gpcid:9353238028319483171,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": null,
-      "reviews": null,
-      "rank": 5
+      "rank": 3
     },
     {
       "name": "Toshiba N300 4TB",
@@ -77,7 +51,20 @@
       "url": "https://www.google.com/search?ibp=oshop&q=Toshiba N300 NAS internal hard drive 4TB OR 6TB OR 8TB OR 10TB OR 12TB&prds=catalogid:3138559334034745723,headlineOfferDocid:13226472388428104866,imageDocid:13626254506181894207,rds:PC_5260445589600985503|PROD_PC_5260445589600985503,gpcid:5260445589600985503,pvt:hg&hl=en&gl=us&udm=28",
       "rating": 5,
       "reviews": 1,
-      "rank": 6
+      "rank": 4
+    },
+    {
+      "name": "Seagate 8TB",
+      "brand": "Seagate",
+      "capacity": 8,
+      "type": "internal",
+      "price": 450.8,
+      "pricePerTB": 56.35,
+      "retailer": "Newegg",
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf Pro NAS internal hard drive 8TB OR 10TB OR 12TB&prds=productid:4432590047262601292,headlineOfferDocid:4432590047262601292,imageDocid:14056235729705494232,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": null,
+      "reviews": null,
+      "rank": 5
     }
   ]
 }
