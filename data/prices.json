@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-17T16:39:28.051Z",
+  "updatedAt": "2026-04-18T15:57:12.602Z",
   "drives": [
     {
       "name": "Digital 4TB",
@@ -9,23 +9,10 @@
       "price": 109,
       "pricePerTB": 27.25,
       "retailer": "Walmart",
-      "url": "https://www.google.com/search?ibp=oshop&q=WD Elements Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:9568487943929682172,headlineOfferDocid:18227466102735342490,imageDocid:1582439074974669350,rds:PC_5524152116974613483|PROD_PC_5524152116974613483,gpcid:1196830506036096544,pvt:hg&hl=en&gl=us&udm=28",
+      "url": "https://www.google.com/search?ibp=oshop&q=WD Elements Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:9568487943929682172,headlineOfferDocid:18227466102735342490,imageDocid:1582439074974669350,rds:PC_1196830506036096544|PROD_PC_1196830506036096544,gpcid:1196830506036096544,pvt:hg&hl=en&gl=us&udm=28",
       "rating": 4.7,
-      "reviews": 45000,
+      "reviews": 6500,
       "rank": 1
-    },
-    {
-      "name": "Digital 8TB",
-      "brand": "Western Digital",
-      "capacity": 8,
-      "type": "external",
-      "price": 279.99,
-      "pricePerTB": 35,
-      "retailer": "Newegg",
-      "url": "https://www.google.com/search?ibp=oshop&q=WD Easystore external desktop hard drive 8TB OR 10TB OR 12TB&prds=productid:231237245953263593,headlineOfferDocid:231237245953263593,imageDocid:2949896158316612752,rds:PC_4963032245046781326|PROD_PC_4963032245046781326,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4,
-      "reviews": 6000,
-      "rank": 2
     },
     {
       "name": "Seagate Expansion 4TB",
@@ -35,23 +22,10 @@
       "price": 150,
       "pricePerTB": 37.5,
       "retailer": "Walmart",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:14512833945581469759,headlineOfferDocid:15759271930432033974,imageDocid:13261432014527815209,rds:PC_3520019128635291477|PROD_PC_3520019128635291477,pvt:hg&hl=en&gl=us&udm=28",
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:14512833945581469759,headlineOfferDocid:15759271930432033974,imageDocid:13261432014527815209,rds:CID_14512833945581469759|PROD_CID_14512833945581469759,gpcid:3520019128635291477,mid:576462875053607293,pvt:hg&hl=en&gl=us&udm=28",
       "rating": 4.6,
       "reviews": 7,
-      "rank": 3
-    },
-    {
-      "name": "Seagate 8TB",
-      "brand": "Seagate",
-      "capacity": 8,
-      "type": "internal",
-      "price": 374.45,
-      "pricePerTB": 46.81,
-      "retailer": "Newegg",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf Pro NAS internal hard drive 8TB OR 10TB OR 12TB&prds=catalogid:16879573826947722541,headlineOfferDocid:2846688604924200422,imageDocid:7621373553612009756,rds:PC_1162087739519268333|PROD_PC_1162087739519268333,gpcid:1162087739519268333,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4.2,
-      "reviews": 5,
-      "rank": 4
+      "rank": 2
     },
     {
       "name": "Toshiba N300 4TB",
@@ -64,7 +38,20 @@
       "url": "https://www.google.com/search?ibp=oshop&q=Toshiba N300 NAS internal hard drive 4TB OR 6TB OR 8TB OR 10TB OR 12TB&prds=catalogid:3138559334034745723,headlineOfferDocid:13226472388428104866,imageDocid:13626254506181894207,rds:PC_5260445589600985503|PROD_PC_5260445589600985503,gpcid:5260445589600985503,pvt:hg&hl=en&gl=us&udm=28",
       "rating": 5,
       "reviews": 1,
-      "rank": 5
+      "rank": 3
+    },
+    {
+      "name": "Seagate 8TB",
+      "brand": "Seagate",
+      "capacity": 8,
+      "type": "internal",
+      "price": 434.99,
+      "pricePerTB": 54.37,
+      "retailer": "Newegg",
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf Pro NAS internal hard drive 8TB OR 10TB OR 12TB&prds=catalogid:4470374643875660031,headlineOfferDocid:5344753136054025763,imageDocid:6469122465611298130,rds:PC_452116044958595888|PROD_PC_452116044958595888,gpcid:452116044958595888,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": 4.8,
+      "reviews": 4,
+      "rank": 4
     }
   ]
 }
