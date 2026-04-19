@@ -1,17 +1,17 @@
 {
-  "updatedAt": "2026-04-18T15:57:12.602Z",
+  "updatedAt": "2026-04-19T15:57:05.493Z",
   "drives": [
     {
-      "name": "Digital 4TB",
-      "brand": "Western Digital",
-      "capacity": 4,
+      "name": "Seagate 5TB",
+      "brand": "Seagate",
+      "capacity": 5,
       "type": "external",
-      "price": 109,
-      "pricePerTB": 27.25,
+      "price": 124,
+      "pricePerTB": 24.8,
       "retailer": "Walmart",
-      "url": "https://www.google.com/search?ibp=oshop&q=WD Elements Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:9568487943929682172,headlineOfferDocid:18227466102735342490,imageDocid:1582439074974669350,rds:PC_1196830506036096544|PROD_PC_1196830506036096544,gpcid:1196830506036096544,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4.7,
-      "reviews": 6500,
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Expansion Desktop external hard drive 4TB OR 6TB OR 8TB OR 10TB&prds=catalogid:16625696658408695655,headlineOfferDocid:13363304410597913941,imageDocid:2431995004503899288,rds:PC_13622506061899857017|PROD_PC_13622506061899857017,gpcid:13622506061899857017,mid:576462858140818173,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": 4.4,
+      "reviews": 2800,
       "rank": 1
     },
     {
@@ -52,6 +52,19 @@
       "rating": 4.8,
       "reviews": 4,
       "rank": 4
+    },
+    {
+      "name": "Digital Red Pro 10TB",
+      "brand": "Western Digital",
+      "capacity": 10,
+      "type": "internal",
+      "price": 599.98,
+      "pricePerTB": 60,
+      "retailer": "Adorama",
+      "url": "https://www.google.com/search?ibp=oshop&q=WD Red Pro NAS internal hard drive 4TB OR 6TB OR 8TB OR 10TB OR 12TB&prds=productid:12765527915645706188,headlineOfferDocid:12765527915645706188,imageDocid:9366364115855622621,rds:PC_7878083482047453263|PROD_PC_7878083482047453263,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": 4.1,
+      "reviews": 2300,
+      "rank": 5
     }
   ]
 }
