@@ -272,9 +272,10 @@
       <div class="header-title">NAS Drive Price Tracker</div>
       <div class="header-sub">CMR drives only · sorted by best $/TB</div>
       <div class="badge" id="cmrBadge">✓ CMR (No SMR)</div>
+      <div class="badge" id="versionBadge" style="margin-left:6px;background:#1e3a5f;color:#93c5fd">v—</div>
     </div>
     <div class="header-meta">
-      <div class="lbl">Last updated</div>
+      <div class="lbl">Last fetch</div>
       <div class="val" id="lastUpdated">Loading…</div>
       <div class="lbl" style="margin-top:8px">Next update</div>
       <div class="val" id="nextUpdate">—</div>
@@ -394,7 +395,7 @@ async function init() {
     renderStats(data);
     renderDrives();
     renderDealsLog(Array.isArray(data.dealsLog) ? data.dealsLog : []);
-    renderMeta(data.updatedAt);
+    renderMeta(data.updatedAt, data.version);
   } catch (e) {
     document.getElementById("drivesTbody").innerHTML =
       `<tr><td colspan="8"><div class="state-box"><div class="emoji">⚠️</div><p>Could not load price data.<br>If this is your first visit, run the GitHub Action to fetch prices.<br><small>${e.message}</small></p></div></td></tr>`;
@@ -444,14 +445,26 @@ function renderStats(data) {
   }
 }
 
-// ── Meta (timestamps) ─────────────────────────────────────────────────────
-function renderMeta(updatedAt) {
-  if (!updatedAt) return;
-  const updated = new Date(updatedAt);
-  document.getElementById("lastUpdated").textContent =
-    updated.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+// ── Meta (timestamps + version) ───────────────────────────────────────────
+function renderMeta(updatedAt, version) {
+  // Version badge
+  const vBadge = document.getElementById("versionBadge");
+  if (vBadge) vBadge.textContent = version ? `v${version}` : "v?";
 
-  const next = new Date(updated.getTime() + 23 * 60 * 60 * 1000);
+  if (!updatedAt) return;
+  const updated  = new Date(updatedAt);
+  const now      = new Date();
+  const minsAgo  = Math.round((now - updated) / 60000);
+  const agoLabel = minsAgo < 60
+    ? `${minsAgo}m ago`
+    : minsAgo < 1440
+    ? `${Math.round(minsAgo / 60)}h ago`
+    : `${Math.round(minsAgo / 1440)}d ago`;
+
+  const dateStr = updated.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  document.getElementById("lastUpdated").textContent = `${dateStr} (${agoLabel})`;
+
+  const next = new Date(updated.getTime() + 24 * 60 * 60 * 1000);
   document.getElementById("nextUpdate").textContent =
     next.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
