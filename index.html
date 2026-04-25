@@ -8,20 +8,20 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #f8fafc;
-      --surface:   #ffffff;
-      --surface2:  #f1f5f9;
-      --border:    #e2e8f0;
-      --border2:   #cbd5e1;
-      --text:      #1e293b;
-      --text2:     #475569;
-      --text3:     #94a3b8;
-      --accent:    #3b82f6;
-      --green:     #10b981;
-      --red:       #ef4444;
-      --amber:     #f59e0b;
+      --bg:        #0f172a;
+      --surface:   #1e293b;
+      --surface2:  #273548;
+      --border:    #334155;
+      --border2:   #475569;
+      --text:      #f1f5f9;
+      --text2:     #94a3b8;
+      --text3:     #64748b;
+      --accent:    #60a5fa;
+      --green:     #34d399;
+      --red:       #f87171;
+      --amber:     #fbbf24;
       --radius:    10px;
-      --shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      --shadow:    0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
     }
 
     body {
@@ -40,7 +40,7 @@
 
     /* ── Header ── */
     .header {
-      background: #0f172a;
+      background: #020817;
       border-radius: var(--radius);
       padding: 22px 24px 18px;
       margin-bottom: 18px;
@@ -51,21 +51,23 @@
       flex-wrap: wrap;
       gap: 12px;
       box-shadow: var(--shadow);
+      border: 1px solid #1e293b;
     }
     .header-title  { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
     .header-sub    { font-size: 12px; color: #64748b; margin-top: 4px; }
     .header-meta   { text-align: right; }
-    .header-meta .lbl  { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; margin-bottom: 3px; }
-    .header-meta .val  { font-size: 13px; color: #94a3b8; }
+    .header-meta .lbl  { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #475569; margin-bottom: 3px; }
+    .header-meta .val  { font-size: 13px; color: #64748b; }
     .badge {
       display: inline-block;
-      background: #1e3a5f;
-      color: #93c5fd;
+      background: #0f2a1f;
+      color: #34d399;
       font-size: 11px;
       font-weight: 500;
       padding: 2px 8px;
       border-radius: 20px;
       margin-top: 6px;
+      border: 1px solid #166534;
     }
 
     /* ── Stats bar ── */
@@ -151,8 +153,8 @@
     }
     .drive-table tr:last-child td { border-bottom: none; }
     .drive-table tr:hover td { background: var(--bg); }
-    .drive-table tr.top-deal td { background: #eff6ff; }
-    .drive-table tr.top-deal:hover td { background: #dbeafe; }
+    .drive-table tr.top-deal td { background: #172554; }
+    .drive-table tr.top-deal:hover td { background: #1e3a8a; }
 
     .drive-name { font-weight: 600; color: var(--text); font-size: 13px; }
     .drive-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
@@ -179,11 +181,11 @@
       display: inline-block;
       padding: 5px 12px;
       background: var(--accent);
-      color: #fff;
+      color: #0f172a;
       border-radius: 6px;
       text-decoration: none;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       white-space: nowrap;
       transition: opacity .15s;
     }
@@ -194,15 +196,15 @@
     .hot-deal-banner {
       margin: 0;
       padding: 12px 20px;
-      background: #f0fdf4;
-      border-bottom: 1px solid #bbf7d0;
+      background: #052e16;
+      border-bottom: 1px solid #166534;
       display: flex;
       align-items: center;
       gap: 10px;
       font-size: 13px;
     }
     .hot-deal-banner .icon { font-size: 16px; }
-    .hot-deal-banner strong { color: #15803d; }
+    .hot-deal-banner strong { color: #34d399; }
 
     /* ── Deals Log table ── */
     .deals-table { width: 100%; border-collapse: collapse; }
@@ -223,7 +225,7 @@
       vertical-align: middle;
     }
     .deals-table tr:last-child td { border-bottom: none; }
-    .deals-table tr:nth-child(1) td { font-weight: 500; background: #eff6ff; }
+    .deals-table tr:nth-child(1) td { font-weight: 500; background: #172554; }
     .deals-table tr:hover td { background: var(--bg); }
     .deals-table .date-cell { color: var(--text2); font-size: 12px; white-space: nowrap; }
     .deals-table .ptb-cell  { font-weight: 700; color: var(--accent); white-space: nowrap; }
@@ -232,7 +234,7 @@
     @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
     .sh {
       display: inline-block;
-      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background: linear-gradient(90deg, #1e293b 25%, #273548 50%, #1e293b 75%);
       background-size: 400px 100%;
       animation: shimmer 1.2s infinite;
       border-radius: 4px;
