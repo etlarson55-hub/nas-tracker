@@ -3,7 +3,7 @@
 // records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
-const VERSION = "8.0.0";
+const VERSION = "9.0.0";
 
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
@@ -143,7 +143,9 @@ function cleanName(brand, model, cap) {
 
 // ── SerpAPI helpers ───────────────────────────────────────────────────────────
 async function searchGoogleShopping(query) {
-  const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}&num=40`;
+  // condition=new tells Google Shopping to only return new-condition listings at the index level.
+  // This filters used/refurb results before they ever reach our code.
+  const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}&num=40&condition=new`;
   const res  = await fetch(url);
   if (!res.ok) throw new Error(`SerpAPI HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
   const data = await res.json();
@@ -151,7 +153,9 @@ async function searchGoogleShopping(query) {
 }
 
 async function searchAmazon(query) {
-  const url = `https://serpapi.com/search.json?engine=amazon&k=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}`;
+  // p_n_condition-type%3A6358196011 is Amazon's "New" condition filter node ID.
+  // This restricts results to new-condition listings only at the Amazon level.
+  const url = `https://serpapi.com/search.json?engine=amazon&k=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}&amazon_filters=p_n_condition-type%3A6358196011`;
   const res  = await fetch(url);
   if (!res.ok) throw new Error(`SerpAPI Amazon HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
   const data = await res.json();
