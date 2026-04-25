@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-04-25T18:26:04.326Z",
+  "updatedAt": "2026-04-25T20:26:28.613Z",
   "drives": [
     {
       "name": "WD Red Plus 2TB",
@@ -86,6 +86,18 @@
       "reviews": 117
     },
     {
+      "name": "Toshiba N300 24TB",
+      "brand": "Toshiba",
+      "model": "N300",
+      "capacity": 24,
+      "price": 899.99,
+      "pricePerTB": 37.5,
+      "retailer": "B&H",
+      "url": "https://www.google.com/search?ibp=oshop&q=Toshiba N300 NAS internal hard drive&prds=catalogid:14165639285507619160,headlineOfferDocid:8812176006921304133,imageDocid:4767072494733144151,rds:PC_17348359098906605663|PROD_PC_17348359098906605663,gpcid:17348359098906605663,mid:576462502447950850,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": 4.7,
+      "reviews": 46
+    },
+    {
       "name": "Toshiba MG 24TB",
       "brand": "Toshiba",
       "model": "MG",
@@ -96,6 +108,18 @@
       "url": "https://www.google.com/search?ibp=oshop&q=Toshiba MG enterprise NAS internal hard drive&prds=catalogid:14165639285507619160,headlineOfferDocid:8812176006921304133,imageDocid:4767072494733144151,rds:PC_17348359098906605663|PROD_PC_17348359098906605663,gpcid:17348359098906605663,mid:576462502447950850,pvt:hg&hl=en&gl=us&udm=28",
       "rating": 4.7,
       "reviews": 46
+    },
+    {
+      "name": "Seagate Exos 10TB",
+      "brand": "Seagate",
+      "model": "Exos",
+      "capacity": 10,
+      "price": 401.25,
+      "pricePerTB": 40.13,
+      "retailer": "Walmart",
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate Exos enterprise internal hard drive&prds=catalogid:12055991498061028685,headlineOfferDocid:12664550775680319721,imageDocid:7328358957540407822,rds:PC_776004521067486687|PROD_PC_776004521067486687,gpcid:776004521067486687,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": 5,
+      "reviews": 1
     },
     {
       "name": "Toshiba MG 22TB",
@@ -170,16 +194,16 @@
       "reviews": null
     },
     {
-      "name": "Seagate IronWolf Pro 10TB",
+      "name": "Seagate IronWolf 4TB",
       "brand": "Seagate",
-      "model": "IronWolf Pro",
-      "capacity": 10,
-      "price": 474.45,
-      "pricePerTB": 47.45,
+      "model": "IronWolf",
+      "capacity": 4,
+      "price": 205.18,
+      "pricePerTB": 51.3,
       "retailer": "Newegg",
-      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf Pro NAS internal hard drive&prds=catalogid:14505592120728557025,headlineOfferDocid:6798253865704861707,imageDocid:10867992741384701602,gpcid:3406852621157966335,mid:576462883262416663,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": null,
-      "reviews": null
+      "url": "https://www.google.com/search?ibp=oshop&q=Seagate IronWolf NAS internal hard drive&prds=catalogid:5777180959950941613,headlineOfferDocid:7007306341764428127,imageDocid:2964626828308217838,rds:PC_10407445158355019938|PROD_PC_10407445158355019938,gpcid:10407445158355019938,pvt:hg&hl=en&gl=us&udm=28",
+      "rating": 5,
+      "reviews": 4
     },
     {
       "name": "Toshiba MG 10TB",
@@ -254,18 +278,6 @@
       "reviews": 19
     },
     {
-      "name": "WD Red Plus 3TB",
-      "brand": "Western Digital",
-      "model": "Red Plus",
-      "capacity": 3,
-      "price": 279,
-      "pricePerTB": 93,
-      "retailer": "Newegg",
-      "url": "https://www.google.com/search?ibp=oshop&q=WD Red Plus NAS internal hard drive&prds=catalogid:9558453265817379551,headlineOfferDocid:14408589886135820270,imageDocid:10873255758193793091,rds:PC_7878083482047453263|PROD_PC_7878083482047453263,gpcid:14841853103001834441,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4.3,
-      "reviews": 1500
-    },
-    {
       "name": "WD Red Pro 3TB",
       "brand": "Western Digital",
       "model": "Red Pro",
@@ -281,7 +293,7 @@
   "history": [
     {
       "date": "2026-04-25",
-      "avgPricePerTB": 49.19
+      "avgPricePerTB": 46.66
     }
   ],
   "dealsLog": [
