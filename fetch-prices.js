@@ -3,7 +3,7 @@
 // records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
-const VERSION = "6.0.0";
+const VERSION = "8.0.0";
 
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
@@ -66,12 +66,13 @@ const URL_REJECT = [
 ];
 
 function isUsedOrRefurb(item) {
-  const title    = item.title       || "";
-  const condition = item.condition  || "";
-  const snippet  = item.snippet     || item.description || "";
-  const exts     = Array.isArray(item.extensions) ? item.extensions.join(" ") : "";
-  const url      = item.link        || item.product_link || item.url || "";
-  const combined = `${title} ${condition} ${snippet} ${exts}`;
+  const title     = item.title       || "";
+  const condition = item.condition   || "";
+  const snippet   = item.snippet     || item.description || "";
+  const exts      = Array.isArray(item.extensions) ? item.extensions.join(" ") : "";
+  const source    = item.source      || "";  // catches "B&H Used Store", "Amazon Warehouse", etc.
+  const url       = item.link        || item.product_link || item.url || "";
+  const combined  = `${title} ${condition} ${snippet} ${exts} ${source}`;
   if (CONDITION_REJECT.some(re => re.test(combined))) return true;
   if (URL_REJECT.some(re => re.test(url)))            return true;
   if (condition && condition.toLowerCase() !== "new")  return true;
@@ -235,7 +236,6 @@ function processItems(items, search, seen, drives, skipped, isAmazon) {
       continue;
     }
 
-    // Dedup by model+capacity+retailer, keep cheapest
     const name = cleanName(search.brand, search.model, cap);
     const key  = `${search.model}-${cap}-${retailer}`;
     if (seen.has(key)) {
