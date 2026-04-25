@@ -1,6 +1,6 @@
 {
-  "version": "6.0.0",
-  "updatedAt": "2026-04-25T21:27:36.246Z",
+  "version": "8.0.0",
+  "updatedAt": "2026-04-25T22:12:15.633Z",
   "drives": [
     {
       "name": "WD Red Plus 2TB",
@@ -25,18 +25,6 @@
       "url": "https://www.amazon.com/Western-Digital-DC-HC550-Surveillance/dp/B0FGHQKV2K/ref=sr_1_15?dib=eyJ2IjoiMSJ9.F08UPyOdOR4CgCIK8V7-4_essx40YoSfAOgC0C0cK2_3JlqOBo4ty_F9B_5fVhAmfGlrq9WpWFeFdmV_pF9Nc5zb7J2Z8zA2XJMHmpTAe1PQHn8Mpn8Eb34wLsKb7-zE9v7E5HlKS4jQyp-MRcNwruLjKP18CofmWf2x75HNxuVSBgvg8Dln1Zfvinyk0STMdJNxlNoB0qySCrym4N7FVyIwGYa3nZe96Wl9ie8j73c.jn9YydOyJ6JX0m5tQ9JXNix34KJfoPbpQwBVSbgL0D4&dib_tag=se&keywords=Seagate+IronWolf+NAS+internal+hard+drive&qid=1777152406&sbo=GW1QB%2BmqAsHTPf1jTZRSDA%3D%3D&sr=8-15",
       "rating": 4.1,
       "reviews": null
-    },
-    {
-      "name": "Toshiba MG 20TB",
-      "brand": "Toshiba",
-      "model": "MG",
-      "capacity": 20,
-      "price": 506.95,
-      "pricePerTB": 25.35,
-      "retailer": "B&H",
-      "url": "https://www.google.com/search?ibp=oshop&q=Toshiba MG enterprise NAS internal hard drive&prds=catalogid:2620647708019795507,headlineOfferDocid:8500458163098721918,imageDocid:9502642075392193715,rds:PC_16036519665784567823|PROD_PC_16036519665784567823,gpcid:16036519665784567823,mid:576462884867864934,pvt:hg&hl=en&gl=us&udm=28",
-      "rating": 4.7,
-      "reviews": 162
     },
     {
       "name": "Seagate IronWolf 12TB",
@@ -894,7 +882,7 @@
   "history": [
     {
       "date": "2026-04-25",
-      "avgPricePerTB": 43.89
+      "avgPricePerTB": 44.14
     }
   ],
   "dealsLog": [
