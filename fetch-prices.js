@@ -27,6 +27,24 @@ const SEARCHES = [
   { q: "Toshiba MG enterprise NAS internal hard drive",   brand: "Toshiba",        model: "MG"           },
 ];
 
+// ── Condition denylist — reject used, refurb, recertified listings ───────────
+const CONDITION_REJECT = [
+  /\bused\b/i,
+  /\brefurbished\b/i,
+  /\brefurb\b/i,
+  /\brecertified\b/i,
+  /\brenewed\b/i,
+  /\bopen[\s-]?box\b/i,
+  /\bpre[\s-]?owned\b/i,
+  /\bpull\b/i,            // "server pull"
+  /\bremanufactured\b/i,
+];
+
+function isUsedOrRefurb(title, condition) {
+  const combined = `${title} ${condition || ""}`;
+  return CONDITION_REJECT.some(re => re.test(combined));
+}
+
 // ── SMR denylist — reject these even if they slip through ──────────────────
 const SMR_PATTERNS = [
   /\bwd\s+red\b(?!\s+(plus|pro))/i,   // WD Red (not Plus/Pro) — SMR on smaller sizes
@@ -120,6 +138,11 @@ async function fetchAllDrives() {
 
       if (isSMR(title)) {
         console.log(`  [SMR skip] ${title}`);
+        continue;
+      }
+
+      if (isUsedOrRefurb(title, item.condition)) {
+        console.log(`  [Used/Refurb skip] ${title}`);
         continue;
       }
 
