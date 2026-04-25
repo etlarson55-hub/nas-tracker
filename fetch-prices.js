@@ -3,6 +3,9 @@
 // records daily #1 deal, maintains price history, and sends a daily email via Resend.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
+const VERSION = "4.0.0";
+
+
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
 const SERP_API_KEY = process.env.SERP_API_KEY;
@@ -145,7 +148,7 @@ async function fetchAllDrives() {
       }
 
       if (isUsedOrRefurb(title, item.condition)) {
-        console.log(`  [Used/Refurb skip] ${title}`);
+        console.log(`  [Used/Refurb skip] condition="${item.condition || "none"}" — ${title}`);
         continue;
       }
 
@@ -380,6 +383,7 @@ async function sendEmail(drives, history, dealsLog) {
 // ── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   console.log("=== NAS Drive Price Tracker — Fetch Start ===");
+  console.log(`Script version: v${VERSION}`);
   console.log(`Run time: ${new Date().toISOString()}`);
 
   // Load existing data to preserve history and deals log
@@ -432,9 +436,9 @@ async function main() {
     .slice(0, 30);
 
   // Write updated prices.json
-  const output = { updatedAt: new Date().toISOString(), drives, history, dealsLog };
+  const output = { version: VERSION, updatedAt: new Date().toISOString(), drives, history, dealsLog };
   writeFileSync("data/prices.json", JSON.stringify(output, null, 2));
-  console.log(`\n✓ Wrote data/prices.json`);
+  console.log(`\n✓ Wrote data/prices.json (script v${VERSION})`);
   console.log(`  ${drives.length} drives  |  ${history.length} history entries  |  ${dealsLog.length} deal log entries`);
   console.log(`  Today's #1: ${best.name} @ $${best.pricePerTB.toFixed(2)}/TB ($${best.price}) from ${best.retailer}`);
 
