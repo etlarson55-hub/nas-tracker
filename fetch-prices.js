@@ -3,7 +3,7 @@
 // records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
-const VERSION = "11.0.0";
+const VERSION = "12.0.0";
 
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
@@ -293,29 +293,32 @@ async function fetchAllDrives() {
   }
 
   // ── Dedup pass ───────────────────────────────────────────────────────────
-  // Two separate signals:
-  // 1. Same URL → definitely the same product page, drop it.
-  // 2. No URL (Amazon results often omit it) → fall back to same
-  //    retailer + capacity + price, which is an extremely reliable proxy.
+  // Both checks run independently on every drive — not if/else.
+  // Check 1 catches same URL from different search queries.
+  // Check 2 catches same product at same price when URLs differ or are absent
+  // (e.g. IronWolf 12TB and N300 12TB both returning the same Amazon listing
+  // at $329.99 but under different product page URLs).
   const seenURLs     = new Set();
-  const seenPriceSig = new Set(); // retailer-capacity-price fallback
+  const seenPriceSig = new Set();
 
   const dedupedDrives = drives.filter(d => {
+    // Check 1 — URL match
     if (d.url) {
       if (seenURLs.has(d.url)) {
         console.log(`  [URL dedup] dropped: ${d.name} → ${d.url.slice(0, 80)}`);
         return false;
       }
       seenURLs.add(d.url);
-    } else {
-      // No URL — use price+capacity+retailer as fingerprint
-      const sig = `${d.retailer}|${d.capacity}|${d.price}`;
-      if (seenPriceSig.has(sig)) {
-        console.log(`  [Price dedup] dropped: ${d.name} ($${d.price}, ${d.capacity}TB at ${d.retailer})`);
-        return false;
-      }
-      seenPriceSig.add(sig);
     }
+
+    // Check 2 — price+capacity+retailer match (always runs)
+    const sig = `${d.retailer}|${d.capacity}|${d.price}`;
+    if (seenPriceSig.has(sig)) {
+      console.log(`  [Price dedup] dropped: ${d.name} ($${d.price}, ${d.capacity}TB at ${d.retailer})`);
+      return false;
+    }
+    seenPriceSig.add(sig);
+
     return true;
   });
 
