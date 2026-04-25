@@ -3,7 +3,7 @@
 // records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
-const VERSION = "9.0.0";
+const VERSION = "10.0.0";
 
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
@@ -292,8 +292,23 @@ async function fetchAllDrives() {
     await new Promise(r => setTimeout(r, 500));
   }
 
-  drives.sort((a, b) => a.pricePerTB - b.pricePerTB);
-  return { drives, skipped };
+  // ── URL dedup ────────────────────────────────────────────────────────────
+  // Amazon (and occasionally other retailers) can return the same product page
+  // for multiple search queries. If two entries share the same URL, keep only
+  // the first one found (they'll have the same price anyway).
+  const seenURLs  = new Set();
+  const dedupedDrives = drives.filter(d => {
+    if (!d.url) return true;            // no URL — can't dedup, keep it
+    if (seenURLs.has(d.url)) {
+      console.log(`  [URL dedup] dropped duplicate: ${d.name} → ${d.url.slice(0, 80)}`);
+      return false;
+    }
+    seenURLs.add(d.url);
+    return true;
+  });
+
+  dedupedDrives.sort((a, b) => a.pricePerTB - b.pricePerTB);
+  return { drives: dedupedDrives, skipped };
 }
 
 // ── Email builder ─────────────────────────────────────────────────────────────
