@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skipped Listings — NAS Drive Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f172a;
+      --surface: #1e293b;
+      --surface2:#273548;
+      --border:  #334155;
+      --border2: #475569;
+      --text:    #f1f5f9;
+      --text2:   #94a3b8;
+      --text3:   #64748b;
+      --accent:  #60a5fa;
+      --green:   #34d399;
+      --amber:   #fbbf24;
+      --red:     #f87171;
+      --radius:  10px;
+      --shadow:  0 1px 3px rgba(0,0,0,.4);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    /* ── Header ── */
+    .header {
+      background: #0a1020;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--accent); text-decoration: none; font-size: 13px;
+      font-weight: 500; padding: 6px 12px; border: 1px solid var(--border);
+      border-radius: 6px; transition: background .15s;
+    }
+    .back-link:hover { background: var(--surface2); }
+    .header-title  { font-size: 18px; font-weight: 600; color: var(--text); }
+    .header-sub    { font-size: 12px; color: var(--text3); margin-top: 3px; }
+    .header-meta   { font-size: 12px; color: var(--text3); text-align: right; }
+
+    /* ── Stats ── */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px;
+      box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 4px; font-weight: 500; }
+    .stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+    .stat-sub   { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 16px;
+      margin-bottom: 12px; display: flex; flex-wrap: wrap;
+      align-items: center; gap: 10px; box-shadow: var(--shadow);
+    }
+    .search-input {
+      flex: 1; min-width: 180px; padding: 7px 12px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text); font-size: 13px;
+      outline: none; transition: border-color .15s;
+    }
+    .search-input::placeholder { color: var(--text3); }
+    .search-input:focus { border-color: var(--accent); }
+
+    .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 5px 12px; border: 1px solid var(--border2);
+      border-radius: 20px; background: transparent; font-size: 12px;
+      cursor: pointer; color: var(--text2); transition: all .15s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--accent); border-color: var(--accent); color: #0f172a; font-weight: 600;
+    }
+    .filter-label { font-size: 12px; color: var(--text3); font-weight: 500; white-space: nowrap; }
+
+    .sort-select {
+      padding: 6px 10px; background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; outline: none;
+    }
+
+    /* ── Table ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .skip-table { width: 100%; border-collapse: collapse; }
+    .skip-table th {
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text3); font-weight: 500; border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .skip-table td {
+      padding: 11px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle; font-size: 13px;
+    }
+    .skip-table tr:last-child td { border-bottom: none; }
+    .skip-table tr:hover td { background: var(--surface2); }
+
+    .reason-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .reason-retailer { background: #1e3a5f; color: #93c5fd; }
+    .reason-notb     { background: #2d1f5e; color: #c4b5fd; }
+
+    .retailer-badge {
+      display: inline-block; font-size: 11px; padding: 2px 8px;
+      border-radius: 20px; background: var(--surface2); color: var(--text2); font-weight: 500;
+    }
+
+    .title-cell { max-width: 340px; }
+    .title-main { font-weight: 500; color: var(--text); line-height: 1.4; }
+    .title-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+    .ptb-val { font-weight: 700; color: var(--accent); }
+    .no-ptb  { color: var(--text3); font-size: 12px; }
+
+    a.buy-link {
+      display: inline-block; padding: 4px 10px; background: var(--accent);
+      color: #0f172a; border-radius: 6px; text-decoration: none;
+      font-size: 12px; font-weight: 600; white-space: nowrap; transition: opacity .15s;
+    }
+    a.buy-link:hover { opacity: .85; }
+    .no-link { color: var(--text3); font-size: 12px; }
+
+    /* ── Info banner ── */
+    .info-banner {
+      background: #1a2a1a; border: 1px solid #2d4a2d; border-radius: var(--radius);
+      padding: 14px 18px; margin-bottom: 16px; font-size: 13px; color: var(--text2);
+      line-height: 1.6;
+    }
+    .info-banner strong { color: var(--green); }
+
+    /* ── Empty / shimmer ── */
+    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+    .sh {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+      background-size: 400px 100%; animation: shimmer 1.2s infinite;
+      border-radius: 4px; vertical-align: middle;
+    }
+    .state-box { padding: 32px; text-align: center; color: var(--text3); }
+    .state-box .emoji { font-size: 32px; margin-bottom: 10px; }
+    .state-box p { font-size: 13px; line-height: 1.6; }
+
+    /* ── Footer ── */
+    .footer { text-align: center; margin-top: 24px; font-size: 12px; color: var(--text3); }
+
+    @media (max-width: 700px) {
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+      .stats-bar .stat-card:last-child { grid-column: span 2; }
+      .skip-table th:nth-child(4),
+      .skip-table td:nth-child(4),
+      .skip-table th:nth-child(6),
+      .skip-table td:nth-child(6) { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <a class="back-link" href="index.html">← Main Dashboard</a>
+      <div>
+        <div class="header-title">Skipped Listings Review</div>
+        <div class="header-sub">Untrusted retailer &amp; missing capacity — new condition only</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div id="lastUpdated">Loading…</div>
+      <div id="versionLabel" style="margin-top:4px"></div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Total skipped</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">shown after filters</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Retailer skip</div>
+      <div class="stat-value" id="statRetailer" style="color:var(--accent)">—</div>
+      <div class="stat-sub">untrusted source</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">No TB detected</div>
+      <div class="stat-value" id="statNoTB" style="color:#c4b5fd">—</div>
+      <div class="stat-sub">title unparseable</div>
+    </div>
+  </div>
+
+  <!-- Info banner -->
+  <div class="info-banner">
+    <strong>What is this?</strong> These listings passed the used/refurb and SMR filters but were skipped either because the retailer isn't on the trusted list, or the drive capacity couldn't be parsed from the title.
+    They may contain deals worth checking manually — especially retailer-skipped items with a $/TB value shown.
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input class="search-input" id="searchInput" type="text" placeholder="Search title, retailer, model…">
+    <span class="filter-label">Reason:</span>
+    <div class="filter-group" id="reasonFilter">
+      <button class="filter-btn active" data-reason="all">All</button>
+      <button class="filter-btn" data-reason="retailer">Retailer skip</button>
+      <button class="filter-btn" data-reason="noTB">No TB</button>
+    </div>
+    <span class="filter-label">Brand:</span>
+    <div class="filter-group" id="brandFilter">
+      <button class="filter-btn active" data-brand="all">All</button>
+      <button class="filter-btn" data-brand="Western Digital">WD</button>
+      <button class="filter-btn" data-brand="Seagate">Seagate</button>
+      <button class="filter-btn" data-brand="Toshiba">Toshiba</button>
+    </div>
+    <span class="filter-label">Sort:</span>
+    <select class="sort-select" id="sortSelect">
+      <option value="ptb-asc">$/TB: Low→High</option>
+      <option value="ptb-desc">$/TB: High→Low</option>
+      <option value="price-asc">Price: Low→High</option>
+      <option value="cap-desc">Capacity: Large→Small</option>
+      <option value="title-asc">Title A→Z</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <table class="skip-table">
+      <thead>
+        <tr>
+          <th>Reason</th>
+          <th>Title</th>
+          <th>$/TB</th>
+          <th>Price</th>
+          <th>Capacity</th>
+          <th>Retailer / Source</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody id="skipTbody"></tbody>
+    </table>
+  </div>
+
+  <div class="footer" id="footerNote">
+    Listings are new condition only · Used/refurb and SMR drives are excluded from this page ·
+    Updated daily via GitHub Actions
+  </div>
+</div>
+
+<script>
+"use strict";
+
+let allSkipped  = [];
+let reasonFilter = "all";
+let brandFilter  = "all";
+let searchQuery  = "";
+let sortMode     = "ptb-asc";
+
+async function init() {
+  renderShimmer();
+  try {
+    const res  = await fetch("data/prices.json?t=" + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    allSkipped = Array.isArray(data.skipped) ? data.skipped : [];
+
+    // Meta
+    if (data.updatedAt) {
+      const d      = new Date(data.updatedAt);
+      const minsAgo = Math.round((Date.now() - d) / 60000);
+      const ago    = minsAgo < 60 ? `${minsAgo}m ago` : minsAgo < 1440 ? `${Math.round(minsAgo/60)}h ago` : `${Math.round(minsAgo/1440)}d ago`;
+      document.getElementById("lastUpdated").textContent =
+        `Updated: ${d.toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})} (${ago})`;
+    }
+    if (data.version) {
+      document.getElementById("versionLabel").textContent = `v${data.version}`;
+      document.getElementById("versionLabel").style.color = "var(--text3)";
+    }
+
+    renderStats();
+    renderTable();
+  } catch (e) {
+    document.getElementById("skipTbody").innerHTML =
+      `<tr><td colspan="7"><div class="state-box"><div class="emoji">⚠️</div><p>Could not load data.<br><small>${e.message}</small></p></div></td></tr>`;
+  }
+}
+
+function renderShimmer() {
+  const cols = [80, 280, 55, 60, 50, 100, 55];
+  document.getElementById("skipTbody").innerHTML =
+    Array.from({length: 12}).map(() =>
+      `<tr>${cols.map(w => `<td><span class="sh" style="width:${w}px;height:13px"> </span></td>`).join("")}</tr>`
+    ).join("");
+}
+
+function renderStats() {
+  const retailerCount = allSkipped.filter(s => s.skipReason === "retailer").length;
+  const noTBCount     = allSkipped.filter(s => s.skipReason === "noTB").length;
+  document.getElementById("statTotal").textContent    = allSkipped.length;
+  document.getElementById("statRetailer").textContent = retailerCount;
+  document.getElementById("statNoTB").textContent     = noTBCount;
+}
+
+function filteredAndSorted() {
+  let items = allSkipped.filter(s => {
+    if (reasonFilter !== "all" && s.skipReason !== reasonFilter) return false;
+    if (brandFilter  !== "all" && s.brand !== brandFilter)       return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const haystack = `${s.title} ${s.retailer} ${s.model} ${s.brand}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  items.sort((a, b) => {
+    switch (sortMode) {
+      case "ptb-asc":
+        if (a.pricePerTB == null && b.pricePerTB == null) return 0;
+        if (a.pricePerTB == null) return 1;
+        if (b.pricePerTB == null) return -1;
+        return a.pricePerTB - b.pricePerTB;
+      case "ptb-desc":
+        if (a.pricePerTB == null && b.pricePerTB == null) return 0;
+        if (a.pricePerTB == null) return 1;
+        if (b.pricePerTB == null) return -1;
+        return b.pricePerTB - a.pricePerTB;
+      case "price-asc":
+        return (a.price || 9999) - (b.price || 9999);
+      case "cap-desc":
+        return (b.capacity || 0) - (a.capacity || 0);
+      case "title-asc":
+        return (a.title || "").localeCompare(b.title || "");
+      default: return 0;
+    }
+  });
+  return items;
+}
+
+function renderTable() {
+  const items  = filteredAndSorted();
+  const tbody  = document.getElementById("skipTbody");
+
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="state-box"><div class="emoji">🔍</div><p>No listings match this filter.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(s => {
+    const reasonHtml = s.skipReason === "retailer"
+      ? `<span class="reason-badge reason-retailer">Retailer</span>`
+      : `<span class="reason-badge reason-notb">No TB</span>`;
+
+    const ptbHtml = s.pricePerTB != null
+      ? `<span class="ptb-val">$${s.pricePerTB.toFixed(2)}/TB</span>`
+      : `<span class="no-ptb">—</span>`;
+
+    const priceHtml = s.price != null
+      ? `$${s.price.toFixed(2)}`
+      : `<span class="no-ptb">—</span>`;
+
+    const capHtml = s.capacity != null
+      ? `${s.capacity}TB`
+      : `<span class="no-ptb">—</span>`;
+
+    const linkHtml = s.url
+      ? `<a class="buy-link" href="${s.url}" target="_blank" rel="noopener">View →</a>`
+      : `<span class="no-link">—</span>`;
+
+    return `<tr>
+      <td>${reasonHtml}</td>
+      <td class="title-cell">
+        <div class="title-main">${s.title}</div>
+        <div class="title-sub">${s.brand} · ${s.model}</div>
+      </td>
+      <td>${ptbHtml}</td>
+      <td>${priceHtml}</td>
+      <td>${capHtml}</td>
+      <td><span class="retailer-badge">${s.retailer}</span></td>
+      <td>${linkHtml}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Event listeners ────────────────────────────────────────────────────────
+document.getElementById("searchInput").addEventListener("input", e => {
+  searchQuery = e.target.value.trim();
+  renderTable();
+});
+
+document.getElementById("reasonFilter").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  reasonFilter = btn.dataset.reason;
+  document.querySelectorAll("#reasonFilter .filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+  renderTable();
+});
+
+document.getElementById("brandFilter").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  brandFilter = btn.dataset.brand;
+  document.querySelectorAll("#brandFilter .filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+  renderTable();
+});
+
+document.getElementById("sortSelect").addEventListener("change", e => {
+  sortMode = e.target.value;
+  renderTable();
+});
+
+init();
+</script>
+</body>
+</html>
