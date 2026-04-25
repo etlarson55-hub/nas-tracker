@@ -3,7 +3,7 @@
 // records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
-const VERSION = "10.0.0";
+const VERSION = "11.0.0";
 
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
@@ -292,18 +292,30 @@ async function fetchAllDrives() {
     await new Promise(r => setTimeout(r, 500));
   }
 
-  // ── URL dedup ────────────────────────────────────────────────────────────
-  // Amazon (and occasionally other retailers) can return the same product page
-  // for multiple search queries. If two entries share the same URL, keep only
-  // the first one found (they'll have the same price anyway).
-  const seenURLs  = new Set();
+  // ── Dedup pass ───────────────────────────────────────────────────────────
+  // Two separate signals:
+  // 1. Same URL → definitely the same product page, drop it.
+  // 2. No URL (Amazon results often omit it) → fall back to same
+  //    retailer + capacity + price, which is an extremely reliable proxy.
+  const seenURLs     = new Set();
+  const seenPriceSig = new Set(); // retailer-capacity-price fallback
+
   const dedupedDrives = drives.filter(d => {
-    if (!d.url) return true;            // no URL — can't dedup, keep it
-    if (seenURLs.has(d.url)) {
-      console.log(`  [URL dedup] dropped duplicate: ${d.name} → ${d.url.slice(0, 80)}`);
-      return false;
+    if (d.url) {
+      if (seenURLs.has(d.url)) {
+        console.log(`  [URL dedup] dropped: ${d.name} → ${d.url.slice(0, 80)}`);
+        return false;
+      }
+      seenURLs.add(d.url);
+    } else {
+      // No URL — use price+capacity+retailer as fingerprint
+      const sig = `${d.retailer}|${d.capacity}|${d.price}`;
+      if (seenPriceSig.has(sig)) {
+        console.log(`  [Price dedup] dropped: ${d.name} ($${d.price}, ${d.capacity}TB at ${d.retailer})`);
+        return false;
+      }
+      seenPriceSig.add(sig);
     }
-    seenURLs.add(d.url);
     return true;
   });
 
