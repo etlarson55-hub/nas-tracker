@@ -279,6 +279,12 @@
       <div class="val" id="lastUpdated">Loading…</div>
       <div class="lbl" style="margin-top:8px">Next update</div>
       <div class="val" id="nextUpdate">—</div>
+      <a href="skipped.html" id="skippedBtn" style="
+        display:inline-block;margin-top:12px;padding:7px 14px;
+        background:#1e3a5f;color:#93c5fd;border:1px solid #2d5a8f;
+        border-radius:7px;text-decoration:none;font-size:12px;font-weight:500;
+        white-space:nowrap;transition:background .15s;
+      ">🔍 Skipped listings</a>
     </div>
   </div>
 
@@ -370,8 +376,9 @@
   </div>
 
   <div class="footer">
-    Prices from Google Shopping via SerpAPI · CMR drives only · Updates daily at 2 PM UTC ·
-    Always confirm price on retailer's page before purchasing
+    Prices from Google Shopping + Amazon via SerpAPI · CMR drives only · Updates daily at 2 PM UTC ·
+    Always confirm price on retailer's page before purchasing ·
+    <a href="skipped.html" id="skippedLink" style="color:var(--accent);text-decoration:none;font-weight:500">View skipped listings →</a>
   </div>
 </div>
 
@@ -396,6 +403,16 @@ async function init() {
     renderDrives();
     renderDealsLog(Array.isArray(data.dealsLog) ? data.dealsLog : []);
     renderMeta(data.updatedAt, data.version);
+    // Update skipped page link with count
+    const skippedCount = Array.isArray(data.skipped) ? data.skipped.length : 0;
+    const skippedLink = document.getElementById("skippedLink");
+    if (skippedLink && skippedCount > 0) {
+      skippedLink.textContent = `View skipped listings (${skippedCount}) →`;
+    }
+    const skippedBtn = document.getElementById("skippedBtn");
+    if (skippedBtn && skippedCount > 0) {
+      skippedBtn.textContent = `🔍 Skipped listings (${skippedCount})`;
+    }
   } catch (e) {
     document.getElementById("drivesTbody").innerHTML =
       `<tr><td colspan="8"><div class="state-box"><div class="emoji">⚠️</div><p>Could not load price data.<br>If this is your first visit, run the GitHub Action to fetch prices.<br><small>${e.message}</small></p></div></td></tr>`;
@@ -504,8 +521,10 @@ function starStr(rating) {
 }
 
 function renderDrives() {
-  const drives = sortedDrives();
-  const avg    = allDrives.length
+  const MAX_DISPLAY = 20;
+  const allFiltered = sortedDrives();
+  const drives      = allFiltered.slice(0, MAX_DISPLAY);
+  const avg         = allDrives.length
     ? allDrives.reduce((s, d) => s + d.pricePerTB, 0) / allDrives.length
     : 0;
 
@@ -525,8 +544,9 @@ function renderDrives() {
   }
 
   // Subtitle
+  const moreLabel = allFiltered.length > MAX_DISPLAY ? ` · showing top ${MAX_DISPLAY} of ${allFiltered.length}` : "";
   document.getElementById("driveSubtitle").textContent =
-    `${drives.length} drive${drives.length !== 1 ? "s" : ""} · sorted by $/TB`;
+    `${allFiltered.length} drive${allFiltered.length !== 1 ? "s" : ""} · sorted by $/TB${moreLabel}`;
 
   // Rows
   const tbody = document.getElementById("drivesTbody");
