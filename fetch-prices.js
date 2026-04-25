@@ -36,8 +36,11 @@ const CONDITION_REJECT = [
   /\brenewed\b/i,
   /\bopen[\s-]?box\b/i,
   /\bpre[\s-]?owned\b/i,
-  /\bpull\b/i,            // "server pull"
+  /\bpull(ed)?\b/i,       // "server pull" / "pulled from server"
   /\bremanufactured\b/i,
+  /\bcertified[\s-]?refurb/i,
+  /\bsurplus\b/i,
+  /\bsecond[\s-]?hand\b/i,
 ];
 
 function isUsedOrRefurb(title, condition) {
