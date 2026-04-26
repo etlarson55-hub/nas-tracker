@@ -3,7 +3,7 @@
 // records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
 // CommonJS — no npm install needed. Uses Node.js built-in fetch.
 
-const VERSION = "12.0.0";
+const VERSION = "13.0.0";
 
 const { writeFileSync, readFileSync, existsSync } = require("fs");
 
@@ -342,7 +342,8 @@ function buildEmailHTML(drives, history, dealsLog) {
   }
   const tc = trendDir === "falling" ? "#10b981" : trendDir === "rising" ? "#ef4444" : "#94a3b8";
   const tl = trendDir === "falling" ? `▼ Down ${trendPct.toFixed(1)}%` : trendDir === "rising" ? `▲ Up ${trendPct.toFixed(1)}%` : "→ Stable";
-  const hotDeals = drives.filter(d => d.pricePerTB / avg <= 0.85);
+  // 25% below market avg — tighter threshold, caps at top 3
+  const hotDeals = drives.filter(d => d.pricePerTB / avg <= 0.75).slice(0, 3);
   const dealSec = hotDeals.length ? `
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin-bottom:20px">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#15803d;font-weight:600;margin-bottom:10px">
@@ -419,7 +420,7 @@ async function sendEmail(drives, history, dealsLog) {
   if (!ejsKey || !ejsSvc || !ejsTpl || !ejsTo) { console.log("Email skipped: EmailJS secrets not set."); return; }
   if (!drives.length) { console.log("Email skipped: no drives."); return; }
   const best    = drives[0];
-  const subject = `NAS Drive Update · Best: $${best.pricePerTB.toFixed(2)}/TB · ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
+  const subject = `NAS Drive Update · Best: $${best.pricePerTB.toFixed(2)} per TB · ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
   const html    = buildEmailHTML(drives, history, dealsLog);
   const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
     method: "POST",
