@@ -1,647 +1,527 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NAS Drive Price Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAS Drive Tracker</title>
   <style>
+    /* ── Reset & Base ───────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0f172a;
-      --surface:   #1e293b;
-      --surface2:  #273548;
-      --border:    #334155;
-      --border2:   #475569;
+      --bg:        #030712;
+      --surface:   #0f172a;
+      --border:    #1e293b;
       --text:      #f1f5f9;
-      --text2:     #94a3b8;
-      --text3:     #64748b;
-      --accent:    #60a5fa;
-      --green:     #34d399;
-      --red:       #f87171;
-      --amber:     #fbbf24;
-      --radius:    10px;
-      --shadow:    0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+      --muted:     #64748b;
+      --accent:    #3b82f6;
+      --green:     #22c55e;
+      --warn-bg:   #431407;
+      --warn-border: #7c2d12;
+      --warn-text: #fb923c;
+      --badge-new: #1e3a5f;
+      --badge-new-text: #93c5fd;
     }
-
+    html { font-size: 16px; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
       min-height: 100vh;
-      font-size: 14px;
-      line-height: 1.5;
+      padding-bottom: 40px;
     }
+    a { color: var(--accent); }
 
-    /* ── Layout ── */
-    .wrap     { max-width: 940px; margin: 0 auto; padding: 24px 16px 48px; }
-    .card     { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-    .card + .card { margin-top: 18px; }
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
-    /* ── Header ── */
-    .header {
-      background: #020817;
-      border-radius: var(--radius);
-      padding: 22px 24px 18px;
-      margin-bottom: 18px;
-      color: #f1f5f9;
+    /* ── Header ─────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0 16px;
+      margin-bottom: 24px;
+    }
+    .header-inner {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 12px;
-      box-shadow: var(--shadow);
-      border: 1px solid #1e293b;
     }
-    .header-title  { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
-    .header-sub    { font-size: 12px; color: #64748b; margin-top: 4px; }
-    .header-meta   { text-align: right; }
-    .header-meta .lbl  { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #475569; margin-bottom: 3px; }
-    .header-meta .val  { font-size: 13px; color: #64748b; }
-    .badge {
-      display: inline-block;
-      background: #0f2a1f;
-      color: #34d399;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 20px;
-      margin-top: 6px;
-      border: 1px solid #166534;
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
+    .header-title h1 { font-size: 1.3rem; font-weight: 800; }
+    .header-meta { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+    .header-links { display: flex; gap: 10px; }
+    .header-links a {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      background: var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: color .15s;
+    }
+    .header-links a:hover { color: var(--text); }
 
-    /* ── Stats bar ── */
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    /* ── Warning banner ─────────────────────────────────────────── */
+    .partial-banner {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      font-size: 0.875rem;
+    }
+    .partial-banner strong { color: var(--warn-text); }
+    .partial-banner p { color: #fdba74; margin-top: 4px; }
+
+    /* ── Stats bar ──────────────────────────────────────────────── */
+    .stats {
+      display: flex;
       gap: 12px;
-      margin-bottom: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
     }
     .stat-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 18px;
-      box-shadow: var(--shadow);
-    }
-    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 4px; font-weight: 500; }
-    .stat-value { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -.5px; }
-    .stat-sub   { font-size: 12px; color: var(--text2); margin-top: 3px; }
-    .stat-card.accent .stat-value { color: var(--accent); }
-    .stat-card.green  .stat-value { color: var(--green); }
-    .stat-card.red    .stat-value { color: var(--red); }
-
-    /* ── Section header ── */
-    .section-hd {
-      padding: 16px 20px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .section-hd h2 { font-size: 13px; font-weight: 600; color: var(--text); }
-    .section-hd p  { font-size: 12px; color: var(--text3); }
-
-    /* ── Filters ── */
-    .filters {
-      padding: 12px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .filters label { font-size: 12px; color: var(--text2); font-weight: 500; }
-    .filter-btn {
-      padding: 4px 12px;
-      border: 1px solid var(--border2);
-      border-radius: 20px;
-      background: transparent;
-      font-size: 12px;
-      cursor: pointer;
-      color: var(--text2);
-      transition: all .15s;
-    }
-    .filter-btn.active, .filter-btn:hover {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    /* ── Main table ── */
-    .drive-table { width: 100%; border-collapse: collapse; }
-    .drive-table th {
-      padding: 10px 16px;
-      text-align: left;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: var(--text3);
-      font-weight: 500;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
-    }
-    .drive-table th:hover { color: var(--text2); }
-    .drive-table th.sorted { color: var(--accent); }
-    .drive-table td {
+      border-radius: 8px;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
+      flex: 1;
+      min-width: 130px;
     }
-    .drive-table tr:last-child td { border-bottom: none; }
-    .drive-table tr:hover td { background: var(--bg); }
-    .drive-table tr.top-deal td { background: #172554; }
-    .drive-table tr.top-deal:hover td { background: #1e3a8a; }
+    .stat-label { font-size: 0.7rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-value { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
+    .stat-value.green { color: var(--green); }
+    .stat-value.warn  { color: var(--warn-text); }
 
-    .drive-name { font-weight: 600; color: var(--text); font-size: 13px; }
-    .drive-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    /* ── Section heading ────────────────────────────────────────── */
+    .section-heading {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
 
-    .price-ptb  { font-size: 17px; font-weight: 700; color: var(--accent); }
-    .price-tot  { font-size: 11px; color: var(--text3); }
-
+    /* ── Desktop table ──────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    thead { background: var(--surface); }
+    thead th {
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #0f172a88; }
+    td { padding: 13px 14px; vertical-align: middle; }
+    .rank {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      width: 36px;
+    }
+    .drive-name { font-weight: 600; white-space: nowrap; }
+    .new-badge {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--badge-new);
+      color: var(--badge-new-text);
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .price-per-tb {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--green);
+      white-space: nowrap;
+    }
+    .price { font-weight: 700; white-space: nowrap; }
     .retailer-badge {
       display: inline-block;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 20px;
-      background: var(--surface2);
-      color: var(--text2);
-      font-weight: 500;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #1d4ed820;
+      color: var(--accent);
+      border: 1px solid #1d4ed840;
+      white-space: nowrap;
+    }
+    .buy-btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .buy-btn:hover { background: #2563eb; }
+
+    /* ── Mobile cards ───────────────────────────────────────────── */
+    .cards { display: none; flex-direction: column; gap: 10px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .card-rank { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .card-name { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+    .card-price-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin: 10px 0 12px;
+    }
+    .card-pptb { font-size: 1.6rem; font-weight: 800; color: var(--green); }
+    .card-pptb span { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+    .card-total { text-align: right; }
+    .card-total-price { font-size: 1.1rem; font-weight: 700; }
+    .card-total-cap { font-size: 0.75rem; color: var(--muted); }
+    .card-buy {
+      display: block;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
     }
 
-    .trophy { font-size: 14px; }
-
-    .rating-stars { color: var(--amber); font-size: 11px; }
-    .rating-count { font-size: 11px; color: var(--text3); }
-
-    a.buy-link {
-      display: inline-block;
-      padding: 5px 12px;
+    /* ── History chart ──────────────────────────────────────────── */
+    .history-section { margin-top: 36px; }
+    .history-bars { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin-top: 10px; }
+    .h-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .h-bar {
+      width: 100%;
       background: var(--accent);
-      color: #ffffff;
-      border-radius: 6px;
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: 600;
-      white-space: nowrap;
+      border-radius: 3px 3px 0 0;
+      opacity: 0.7;
+      min-height: 4px;
       transition: opacity .15s;
     }
-    a.buy-link:hover { opacity: .85; }
-    .no-link { font-size: 12px; color: var(--text3); }
+    .h-bar:hover { opacity: 1; }
+    .h-label { font-size: 0.6rem; color: var(--muted); white-space: nowrap; }
 
-    /* ── Hot deal banner ── */
-    .hot-deal-banner {
-      margin: 0;
-      padding: 12px 20px;
-      background: #052e16;
-      border-bottom: 1px solid #166534;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
+    /* ── Run info ───────────────────────────────────────────────── */
+    .run-info {
+      margin-top: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
     }
-    .hot-deal-banner .icon { font-size: 16px; }
-    .hot-deal-banner strong { color: #34d399; }
+    .run-info strong { color: var(--text); }
 
-    /* ── Deals Log table ── */
-    .deals-table { width: 100%; border-collapse: collapse; }
-    .deals-table th {
-      padding: 10px 16px;
-      text-align: left;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      color: var(--text3);
-      font-weight: 500;
-      border-bottom: 1px solid var(--border);
-    }
-    .deals-table td {
-      padding: 11px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-      vertical-align: middle;
-    }
-    .deals-table tr:last-child td { border-bottom: none; }
-    .deals-table tr:nth-child(1) td { font-weight: 500; background: #172554; }
-    .deals-table tr:hover td { background: var(--bg); }
-    .deals-table .date-cell { color: var(--text2); font-size: 12px; white-space: nowrap; }
-    .deals-table .ptb-cell  { font-weight: 700; color: var(--accent); white-space: nowrap; }
-
-    /* ── Skeleton shimmer ── */
-    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
-    .sh {
-      display: inline-block;
-      background: linear-gradient(90deg, #1e293b 25%, #273548 50%, #1e293b 75%);
-      background-size: 400px 100%;
-      animation: shimmer 1.2s infinite;
-      border-radius: 4px;
-      vertical-align: middle;
-    }
-
-    /* ── Error / empty states ── */
-    .state-box {
-      padding: 32px;
+    /* ── Empty state ────────────────────────────────────────────── */
+    .empty {
       text-align: center;
-      color: var(--text3);
+      padding: 48px 24px;
+      color: var(--muted);
     }
-    .state-box .emoji { font-size: 32px; margin-bottom: 10px; }
-    .state-box p { font-size: 13px; line-height: 1.6; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
 
-    /* ── Footer ── */
-    .footer { text-align: center; margin-top: 24px; font-size: 12px; color: var(--text3); }
-
-    @media (max-width: 600px) {
-      .stats-bar { grid-template-columns: 1fr 1fr; }
-      .stats-bar .stat-card:last-child { grid-column: span 2; }
-      .drive-table th:nth-child(4),
-      .drive-table td:nth-child(4),
-      .drive-table th:nth-child(6),
-      .drive-table td:nth-child(6) { display: none; }
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .table-wrap { display: none; }
+      .cards { display: flex; }
+      .stats { gap: 8px; }
+      .stat-card { padding: 10px 12px; min-width: 0; }
+      .stat-value { font-size: 1.1rem; }
     }
   </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Header -->
-  <div class="header">
-    <div>
-      <div class="header-title">NAS Drive Price Tracker</div>
-      <div class="header-sub">CMR drives only · sorted by best $/TB</div>
-      <div class="badge" id="cmrBadge">✓ CMR (No SMR)</div>
-      <div class="badge" id="versionBadge" style="margin-left:6px;background:#1e3a5f;color:#93c5fd">v—</div>
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="header-title">
+        <span style="font-size:1.5rem;">🖴</span>
+        <div>
+          <h1>NAS Drive Tracker</h1>
+          <div class="header-meta" id="lastUpdated">Loading…</div>
+        </div>
+      </div>
+      <div class="header-links">
+        <a href="skipped.html">🔍 Skipped Items</a>
+      </div>
     </div>
-    <div class="header-meta">
-      <div class="lbl">Last fetch</div>
-      <div class="val" id="lastUpdated">Loading…</div>
-      <div class="lbl" style="margin-top:8px">Next update</div>
-      <div class="val" id="nextUpdate">—</div>
-      <a href="skipped.html" id="skippedBtn" style="
-        display:inline-block;margin-top:12px;padding:7px 14px;
-        background:#1e3a5f;color:#93c5fd;border:1px solid #2d5a8f;
-        border-radius:7px;text-decoration:none;font-size:12px;font-weight:500;
-        white-space:nowrap;transition:background .15s;
-      ">🔍 Skipped listings</a>
-    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Partial run warning -->
+  <div class="partial-banner" id="partialBanner" style="display:none;">
+    <strong>⚠️ Partial data this run</strong>
+    <p id="partialMsg"></p>
   </div>
 
   <!-- Stats bar -->
-  <div class="stats-bar">
-    <div class="stat-card accent">
-      <div class="stat-label">Best $/TB today</div>
-      <div class="stat-value" id="statBest">—</div>
-      <div class="stat-sub"  id="statBestName">—</div>
-    </div>
-    <div class="stat-card" id="statTrendCard">
-      <div class="stat-label">Market avg $/TB</div>
-      <div class="stat-value" id="statAvg">—</div>
-      <div class="stat-sub"  id="statTrend">—</div>
+  <div class="stats" id="statsBar">
+    <div class="stat-card">
+      <div class="stat-label">Drives Tracked</div>
+      <div class="stat-value" id="statDrives">—</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Drives tracked</div>
-      <div class="stat-value" id="statCount">—</div>
-      <div class="stat-sub">CMR, trusted retailers</div>
+      <div class="stat-label">Best $/TB Today</div>
+      <div class="stat-value green" id="statBest">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Queries Run</div>
+      <div class="stat-value" id="statQueries">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">API Credits Left</div>
+      <div class="stat-value" id="statCredits">—</div>
     </div>
   </div>
 
-  <!-- Main drives table -->
-  <div class="card" id="mainCard">
-    <div class="section-hd">
-      <h2>Best Value Drives</h2>
-      <p id="driveSubtitle">Loading…</p>
-    </div>
-    <div id="hotDealBanner"></div>
-    <div class="filters" id="filterBar">
-      <label>Capacity:</label>
-      <button class="filter-btn active" data-cap="all">All</button>
-      <button class="filter-btn" data-cap="4">4TB</button>
-      <button class="filter-btn" data-cap="6">6TB</button>
-      <button class="filter-btn" data-cap="8">8TB</button>
-      <button class="filter-btn" data-cap="10">10TB</button>
-      <button class="filter-btn" data-cap="12">12TB</button>
-      <button class="filter-btn" data-cap="14">14TB</button>
-      <button class="filter-btn" data-cap="16">16TB</button>
-      <button class="filter-btn" data-cap="18">18TB</button>
-      <button class="filter-btn" data-cap="20">20TB+</button>
-      <label style="margin-left:8px">Brand:</label>
-      <button class="filter-btn active" data-brand="all">All</button>
-      <button class="filter-btn" data-brand="WD">WD</button>
-      <button class="filter-btn" data-brand="Seagate">Seagate</button>
-      <button class="filter-btn" data-brand="Toshiba">Toshiba</button>
-    </div>
-    <table class="drive-table">
-      <thead>
-        <tr>
-          <th style="width:32px">#</th>
-          <th data-sort="name">Drive</th>
-          <th data-sort="pricePerTB" class="sorted">$/TB ↑</th>
-          <th data-sort="price">Total Price</th>
-          <th data-sort="capacity">Size</th>
-          <th>Retailer</th>
-          <th>Rating</th>
-          <th>Link</th>
-        </tr>
-      </thead>
-      <tbody id="drivesTbody">
-        <!-- shimmer rows injected by JS -->
-      </tbody>
-    </table>
-  </div>
+  <!-- Section heading -->
+  <div class="section-heading">All Drives — Sorted by $/TB</div>
 
-  <!-- 30-day #1 deals log -->
-  <div class="card" id="dealsLogCard">
-    <div class="section-hd">
-      <h2>📅 #1 Deal — Past 30 Days</h2>
-      <p>Best $/TB drive recorded each day</p>
-    </div>
-    <table class="deals-table">
+  <!-- Desktop table -->
+  <div class="table-wrap" id="tableWrap" style="display:none;">
+    <table>
       <thead>
         <tr>
-          <th>Date</th>
+          <th>#</th>
           <th>Drive</th>
-          <th>Size</th>
+          <th>Capacity</th>
           <th>$/TB</th>
-          <th>Total</th>
+          <th>Price</th>
           <th>Retailer</th>
-          <th>Link</th>
+          <th>First Seen</th>
+          <th></th>
         </tr>
       </thead>
-      <tbody id="dealsTbody">
-        <!-- injected by JS -->
-      </tbody>
+      <tbody id="tableBody"></tbody>
     </table>
   </div>
 
-  <div class="footer">
-    Prices from Google Shopping + Amazon via SerpAPI · CMR drives only · Updates daily at 2 PM UTC ·
-    Always confirm price on retailer's page before purchasing ·
-    <a href="skipped.html" id="skippedLink" style="color:var(--accent);text-decoration:none;font-weight:500">View skipped listings →</a>
+  <!-- Mobile cards -->
+  <div class="cards" id="mobileCards"></div>
+
+  <!-- Empty state -->
+  <div class="empty" id="emptyState" style="display:none;">
+    <div class="empty-icon">🔍</div>
+    <p style="font-size:1rem;font-weight:700;margin-bottom:8px;">No drives found this run</p>
+    <p style="font-size:0.875rem;">Check the <a href="skipped.html">skipped items page</a> to see what was filtered.</p>
   </div>
-</div>
+
+  <!-- Price history chart -->
+  <div class="history-section" id="historySection" style="display:none;">
+    <div class="section-heading">Best $/TB — 30-Day History</div>
+    <div class="history-bars" id="historyBars"></div>
+  </div>
+
+  <!-- Run info footer -->
+  <div class="run-info" id="runInfo" style="display:none;"></div>
+
+</div><!-- /container -->
 
 <script>
-"use strict";
+(async () => {
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const NEW_TRACKER_DAYS = 3;
 
-let allDrives  = [];
-let capFilter  = "all";
-let brandFilter = "all";
-let sortCol    = "pricePerTB";
-let sortAsc    = true;
+  function daysAgo(dateStr) {
+    if (!dateStr) return 999;
+    return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  }
 
-// ── Load data ──────────────────────────────────────────────────────────────
-async function init() {
-  renderShimmer();
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+  }
+
+  function fmtShort(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // ── Fetch data ─────────────────────────────────────────────────────────────
+  let data;
   try {
-    const res  = await fetch("data/prices.json?t=" + Date.now());
+    const res = await fetch('./data/prices.json?t=' + Date.now());
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    allDrives = Array.isArray(data.drives) ? data.drives : [];
-    renderStats(data);
-    renderDrives();
-    renderDealsLog(Array.isArray(data.dealsLog) ? data.dealsLog : []);
-    renderMeta(data.updatedAt, data.version);
-    // Update skipped page link with count
-    const skippedCount = Array.isArray(data.skipped) ? data.skipped.length : 0;
-    const skippedLink = document.getElementById("skippedLink");
-    if (skippedLink && skippedCount > 0) {
-      skippedLink.textContent = `View skipped listings (${skippedCount}) →`;
-    }
-    const skippedBtn = document.getElementById("skippedBtn");
-    if (skippedBtn && skippedCount > 0) {
-      skippedBtn.textContent = `🔍 Skipped listings (${skippedCount})`;
-    }
+    data = await res.json();
   } catch (e) {
-    document.getElementById("drivesTbody").innerHTML =
-      `<tr><td colspan="8"><div class="state-box"><div class="emoji">⚠️</div><p>Could not load price data.<br>If this is your first visit, run the GitHub Action to fetch prices.<br><small>${e.message}</small></p></div></td></tr>`;
-    document.getElementById("dealsTbody").innerHTML =
-      `<tr><td colspan="7"><div class="state-box"><p>No deal history yet.</p></div></td></tr>`;
-  }
-}
-
-function renderShimmer() {
-  const cols = [32, 180, 60, 70, 45, 80, 60, 60];
-  document.getElementById("drivesTbody").innerHTML =
-    Array.from({length: 10}).map(() =>
-      `<tr>${cols.map(w => `<td><span class="sh" style="width:${w}px;height:13px"> </span></td>`).join("")}</tr>`
-    ).join("");
-}
-
-// ── Stats bar ─────────────────────────────────────────────────────────────
-function renderStats(data) {
-  const drives  = data.drives || [];
-  const history = Array.isArray(data.history) ? data.history : [];
-
-  if (!drives.length) return;
-
-  const best = drives[0];
-  const avg  = drives.reduce((s, d) => s + d.pricePerTB, 0) / drives.length;
-
-  document.getElementById("statBest").textContent     = `$${best.pricePerTB.toFixed(2)}/TB`;
-  document.getElementById("statBestName").textContent  = best.name;
-  document.getElementById("statAvg").textContent       = `$${avg.toFixed(2)}/TB`;
-  document.getElementById("statCount").textContent     = drives.length;
-
-  // Trend from history (newest vs oldest of last 5, different dates guaranteed)
-  if (history.length >= 2) {
-    const recent   = history.slice(0, 5);
-    const newest   = recent[0].avgPricePerTB;
-    const oldest   = recent[recent.length - 1].avgPricePerTB;
-    const pct      = Math.abs(((newest - oldest) / oldest) * 100).toFixed(1);
-    const falling  = newest < oldest;
-    const trendEl  = document.getElementById("statTrend");
-    const cardEl   = document.getElementById("statTrendCard");
-    trendEl.textContent = falling ? `▼ Down ${pct}% over ${recent.length - 1} days` : `▲ Up ${pct}% over ${recent.length - 1} days`;
-    trendEl.style.color = falling ? "var(--green)" : "var(--red)";
-    if (falling) cardEl.classList.add("green");
-    else         cardEl.classList.add("red");
-  } else {
-    document.getElementById("statTrend").textContent = "Collecting history…";
-  }
-}
-
-// ── Meta (timestamps + version) ───────────────────────────────────────────
-function renderMeta(updatedAt, version) {
-  // Version badge
-  const vBadge = document.getElementById("versionBadge");
-  if (vBadge) vBadge.textContent = version ? `v${version}` : "v?";
-
-  if (!updatedAt) return;
-  const updated  = new Date(updatedAt);
-  const now      = new Date();
-  const minsAgo  = Math.round((now - updated) / 60000);
-  const agoLabel = minsAgo < 60
-    ? `${minsAgo}m ago`
-    : minsAgo < 1440
-    ? `${Math.round(minsAgo / 60)}h ago`
-    : `${Math.round(minsAgo / 1440)}d ago`;
-
-  const dateStr = updated.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  document.getElementById("lastUpdated").textContent = `${dateStr} (${agoLabel})`;
-
-  const next = new Date(updated.getTime() + 24 * 60 * 60 * 1000);
-  document.getElementById("nextUpdate").textContent =
-    next.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-// ── Drives table ──────────────────────────────────────────────────────────
-function filteredDrives() {
-  return allDrives.filter(d => {
-    const capOk = capFilter === "all"
-      ? true
-      : capFilter === "20"
-      ? d.capacity >= 20
-      : d.capacity === parseInt(capFilter);
-    const brandOk = brandFilter === "all"
-      ? true
-      : (d.brand || "").includes(brandFilter);
-    return capOk && brandOk;
-  });
-}
-
-function sortedDrives() {
-  const arr = filteredDrives().slice();
-  arr.sort((a, b) => {
-    let va = a[sortCol], vb = b[sortCol];
-    if (typeof va === "string") va = va.toLowerCase();
-    if (typeof vb === "string") vb = vb.toLowerCase();
-    if (va < vb) return sortAsc ? -1 : 1;
-    if (va > vb) return sortAsc ?  1 : -1;
-    return 0;
-  });
-  return arr;
-}
-
-function starStr(rating) {
-  if (!rating) return "";
-  const full  = Math.round(rating);
-  return "★".repeat(Math.min(full, 5)) + "☆".repeat(Math.max(0, 5 - full));
-}
-
-function renderDrives() {
-  const MAX_DISPLAY = 20;
-  const allFiltered = sortedDrives();
-  const drives      = allFiltered.slice(0, MAX_DISPLAY);
-  const avg         = allDrives.length
-    ? allDrives.reduce((s, d) => s + d.pricePerTB, 0) / allDrives.length
-    : 0;
-
-  // Hot deal banner
-  const hotDeals = allDrives.filter(d => d.pricePerTB / avg <= 0.85);
-  const banner   = document.getElementById("hotDealBanner");
-  if (hotDeals.length && avg > 0) {
-    const d = hotDeals[0];
-    banner.innerHTML = `<div class="hot-deal-banner">
-      <span class="icon">🔥</span>
-      <span><strong>${d.name}</strong> is ${Math.round((1 - d.pricePerTB / avg) * 100)}% below market avg at
-      <strong>$${d.pricePerTB.toFixed(2)}/TB</strong> — 
-      ${d.url ? `<a href="${d.url}" target="_blank" style="color:var(--green)">View deal →</a>` : d.retailer}</span>
-    </div>`;
-  } else {
-    banner.innerHTML = "";
-  }
-
-  // Subtitle
-  const moreLabel = allFiltered.length > MAX_DISPLAY ? ` · showing top ${MAX_DISPLAY} of ${allFiltered.length}` : "";
-  document.getElementById("driveSubtitle").textContent =
-    `${allFiltered.length} drive${allFiltered.length !== 1 ? "s" : ""} · sorted by $/TB${moreLabel}`;
-
-  // Rows
-  const tbody = document.getElementById("drivesTbody");
-  if (!drives.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="state-box"><div class="emoji">🔍</div><p>No drives match this filter.</p></div></td></tr>`;
+    $('lastUpdated').textContent = 'Could not load prices.json — ' + e.message;
     return;
   }
 
-  tbody.innerHTML = drives.map((d, i) => {
-    const rank      = i + 1;
-    const isTop     = i === 0;
-    const isHot     = avg > 0 && d.pricePerTB / avg <= 0.85;
-    const linkHtml  = d.url
-      ? `<a class="buy-link" href="${d.url}" target="_blank" rel="noopener">Buy →</a>`
-      : `<span class="no-link">—</span>`;
-    const ratingHtml = d.rating
-      ? `<div class="rating-stars">${starStr(d.rating)}</div><div class="rating-count">${d.rating} (${(d.reviews||0).toLocaleString()})</div>`
-      : `<span class="no-link">—</span>`;
+  const drives    = data.drives    || [];
+  const history   = data.history   || [];
+  const runStatus = data.runStatus || {};
 
-    return `<tr class="${isTop ? "top-deal" : ""}">
-      <td style="font-weight:600;color:var(--text3)">${isTop ? "🏆" : rank}</td>
-      <td>
-        <div class="drive-name">${d.name}${isHot && !isTop ? " 🔥" : ""}</div>
-        <div class="drive-sub">${d.model || ""} · ${d.brand || ""} · CMR</div>
-      </td>
-      <td><div class="price-ptb">$${d.pricePerTB.toFixed(2)}/TB</div></td>
-      <td><div style="font-weight:600">$${d.price.toFixed(2)}</div></td>
-      <td>${d.capacity}TB</td>
-      <td><span class="retailer-badge">${d.retailer}</span></td>
-      <td>${ratingHtml}</td>
-      <td>${linkHtml}</td>
-    </tr>`;
-  }).join("");
-}
+  // ── Header meta ────────────────────────────────────────────────────────────
+  $('lastUpdated').textContent = data.updatedAt
+    ? 'Updated ' + fmtDate(data.updatedAt)
+    : 'No update time available';
 
-// ── Deals Log ─────────────────────────────────────────────────────────────
-function renderDealsLog(dealsLog) {
-  const tbody = document.getElementById("dealsTbody");
-  if (!dealsLog.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="state-box"><p>No deal history yet — check back tomorrow!</p></div></td></tr>`;
-    return;
+  // ── Partial run banner ─────────────────────────────────────────────────────
+  if (runStatus.partial) {
+    $('partialBanner').style.display = 'block';
+    $('partialMsg').textContent =
+      `Only ${runStatus.queriesCompleted} of ${runStatus.queriesPlanned} queries completed. ` +
+      `Some drive categories may be missing. ` +
+      (runStatus.errors && runStatus.errors.length
+        ? `Errors: ${runStatus.errors.slice(0,2).join('; ')}`
+        : '');
   }
-  tbody.innerHTML = dealsLog.map((d, i) => {
-    const dateLabel = new Date(d.date + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-    const isToday   = i === 0;
-    const linkHtml  = d.url
-      ? `<a class="buy-link" href="${d.url}" target="_blank" rel="noopener" style="font-size:11px;padding:3px 9px">Buy →</a>`
-      : `<span class="no-link">—</span>`;
-    return `<tr>
-      <td class="date-cell">${isToday ? "📌 Today" : dateLabel}</td>
-      <td style="font-weight:${isToday ? 600 : 400}">${d.name}</td>
-      <td>${d.capacity}TB</td>
-      <td class="ptb-cell">$${d.pricePerTB.toFixed(2)}/TB</td>
-      <td>$${d.price.toFixed(2)}</td>
-      <td><span class="retailer-badge">${d.retailer}</span></td>
-      <td>${linkHtml}</td>
-    </tr>`;
-  }).join("");
-}
 
-// ── Filters ───────────────────────────────────────────────────────────────
-document.getElementById("filterBar").addEventListener("click", e => {
-  const btn = e.target.closest(".filter-btn");
-  if (!btn) return;
-
-  if ("cap" in btn.dataset) {
-    capFilter = btn.dataset.cap;
-    document.querySelectorAll("[data-cap]").forEach(b => b.classList.toggle("active", b === btn));
-  } else if ("brand" in btn.dataset) {
-    brandFilter = btn.dataset.brand;
-    document.querySelectorAll("[data-brand]").forEach(b => b.classList.toggle("active", b === btn));
+  // ── Stats bar ──────────────────────────────────────────────────────────────
+  $('statDrives').textContent = drives.length;
+  $('statBest').textContent   = drives.length ? '$' + drives[0].pricePerTB.toFixed(2) + '/TB' : '—';
+  $('statQueries').textContent =
+    `${runStatus.queriesCompleted ?? '?'}/${runStatus.queriesPlanned ?? '?'}`;
+  const creditsEl = $('statCredits');
+  creditsEl.textContent = runStatus.creditsRemaining ?? '?';
+  if (typeof runStatus.creditsRemaining === 'number' && runStatus.creditsRemaining < 20) {
+    creditsEl.classList.add('warn');
   }
-  renderDrives();
-});
 
-// ── Column sort ───────────────────────────────────────────────────────────
-document.querySelector(".drive-table thead").addEventListener("click", e => {
-  const th = e.target.closest("th[data-sort]");
-  if (!th) return;
-  const col = th.dataset.sort;
-  if (sortCol === col) {
-    sortAsc = !sortAsc;
+  // ── No drives state ────────────────────────────────────────────────────────
+  if (drives.length === 0) {
+    $('emptyState').style.display = 'block';
   } else {
-    sortCol = col;
-    sortAsc = true;
-  }
-  document.querySelectorAll("th[data-sort]").forEach(t => {
-    t.classList.toggle("sorted", t.dataset.sort === sortCol);
-    if (t.dataset.sort === sortCol) t.textContent = t.textContent.replace(/ [↑↓]$/, "") + (sortAsc ? " ↑" : " ↓");
-    else t.textContent = t.textContent.replace(/ [↑↓]$/, "");
-  });
-  renderDrives();
-});
+    // ── Desktop table ────────────────────────────────────────────────────────
+    const tbody = $('tableBody');
+    drives.forEach((d, i) => {
+      const isNew = daysAgo(d.firstSeen) < NEW_TRACKER_DAYS;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="rank">${i + 1}</td>
+        <td class="drive-name">
+          ${escHtml(d.name)}
+          ${isNew ? '<span class="new-badge">New</span>' : ''}
+        </td>
+        <td>${d.capacity}TB</td>
+        <td class="price-per-tb">$${d.pricePerTB.toFixed(2)}</td>
+        <td class="price">$${d.price.toFixed(2)}</td>
+        <td><span class="retailer-badge">${escHtml(d.retailer)}</span></td>
+        <td style="color:var(--muted);font-size:0.8rem;">${fmtShort(d.firstSeen)}</td>
+        <td><a class="buy-btn" href="${escHtml(d.url)}" target="_blank" rel="noopener">Buy →</a></td>`;
+      tbody.appendChild(tr);
+    });
+    $('tableWrap').style.display = 'block';
 
-init();
+    // ── Mobile cards ──────────────────────────────────────────────────────────
+    const cardsCont = $('mobileCards');
+    drives.forEach((d, i) => {
+      const isNew = daysAgo(d.firstSeen) < NEW_TRACKER_DAYS;
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <div class="card-top">
+          <span class="card-rank">#${i + 1}</span>
+          <span class="retailer-badge">${escHtml(d.retailer)}</span>
+        </div>
+        <div class="card-name">
+          ${escHtml(d.name)}
+          ${isNew ? '<span class="new-badge">New</span>' : ''}
+        </div>
+        <div class="card-price-row">
+          <div class="card-pptb">$${d.pricePerTB.toFixed(2)}<span>/TB</span></div>
+          <div class="card-total">
+            <div class="card-total-price">$${d.price.toFixed(2)}</div>
+            <div class="card-total-cap">${d.capacity}TB drive</div>
+          </div>
+        </div>
+        <a class="card-buy" href="${escHtml(d.url)}" target="_blank" rel="noopener">Buy Now →</a>`;
+      cardsCont.appendChild(div);
+    });
+  }
+
+  // ── History chart ──────────────────────────────────────────────────────────
+  const chartData = history.filter(h => h.bestPricePerTB !== null).slice(0, 20).reverse();
+  if (chartData.length > 1) {
+    const histSection = $('historySection');
+    const barsDiv     = $('historyBars');
+    histSection.style.display = 'block';
+
+    const max = Math.max(...chartData.map(h => h.bestPricePerTB));
+    const min = Math.min(...chartData.map(h => h.bestPricePerTB));
+    const range = max - min || 1;
+
+    chartData.forEach(h => {
+      const pct = 20 + ((h.bestPricePerTB - min) / range) * 80;
+      const wrap = document.createElement('div');
+      wrap.className = 'h-bar-wrap';
+      wrap.title = `${h.date}: $${h.bestPricePerTB.toFixed(2)}/TB`;
+      wrap.innerHTML = `
+        <div class="h-bar" style="height:${pct}%"></div>
+        <span class="h-label">${fmtShort(h.date)}</span>`;
+      barsDiv.appendChild(wrap);
+    });
+  }
+
+  // ── Run info ───────────────────────────────────────────────────────────────
+  if (data.runStatus) {
+    const ri = $('runInfo');
+    ri.style.display = 'block';
+    const errs = (runStatus.errors || []).length;
+    ri.innerHTML =
+      `<strong>Last run:</strong> ${fmtDate(runStatus.timestamp)} · ` +
+      `<strong>Queries:</strong> ${runStatus.queriesCompleted}/${runStatus.queriesPlanned} · ` +
+      `<strong>Credits remaining:</strong> ${runStatus.creditsRemaining} · ` +
+      `<strong>v${data.version}</strong>` +
+      (errs ? ` · <span style="color:var(--warn-text)">⚠ ${errs} error${errs > 1 ? 's' : ''} — <a href="skipped.html">see details</a></span>` : '');
+  }
+
+  // ── Utility ────────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
 </script>
 </body>
 </html>
