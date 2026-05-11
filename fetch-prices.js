@@ -1,486 +1,602 @@
-// fetch-prices.js
-// Runs server-side in GitHub Actions — fetches CMR NAS drive prices via SerpAPI,
-// records daily #1 deal, maintains price history, and sends a daily email via EmailJS.
-// CommonJS — no npm install needed. Uses Node.js built-in fetch.
+#!/usr/bin/env node
+'use strict';
 
-const VERSION = "13.0.0";
+// ─── NAS Drive Price Tracker — fetch-prices.js v2.0.0 ────────────────────────
+// Runs via GitHub Actions on a daily schedule.
+// Queries SerpAPI (Google Shopping + Amazon engine), filters to confirmed
+// new-condition drives from trusted retailers, writes prices.json, sends email.
 
-const { writeFileSync, readFileSync, existsSync } = require("fs");
+const VERSION = '2.0.0';
+const fs   = require('fs');
+const path = require('path');
 
-const SERP_API_KEY = process.env.SERP_API_KEY;
+// ─── ENVIRONMENT ─────────────────────────────────────────────────────────────
+const SERP_API_KEY  = process.env.SERP_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const ALERT_EMAIL   = process.env.ALERT_EMAIL;
+const SITE_URL      = process.env.SITE_URL || 'https://etlarson55-hub.github.io/nas-tracker/';
 
-if (!SERP_API_KEY) {
-  console.error("ERROR: SERP_API_KEY environment variable is not set.");
-  process.exit(1);
-}
+if (!SERP_API_KEY)   { console.error('FATAL: SERP_API_KEY not set');   process.exit(1); }
+if (!RESEND_API_KEY) { console.error('FATAL: RESEND_API_KEY not set'); process.exit(1); }
+if (!ALERT_EMAIL)    { console.error('FATAL: ALERT_EMAIL not set');    process.exit(1); }
 
-// ── CMR-only Google Shopping search queries ──────────────────────────────────
-const SEARCHES = [
-  { q: "WD Red Plus NAS internal hard drive",             brand: "Western Digital", model: "Red Plus"     },
-  { q: "WD Red Pro NAS internal hard drive",              brand: "Western Digital", model: "Red Pro"      },
-  { q: "WD Gold enterprise NAS internal hard drive",      brand: "Western Digital", model: "Gold"         },
-  { q: "Seagate IronWolf NAS internal hard drive",        brand: "Seagate",        model: "IronWolf"     },
-  { q: "Seagate IronWolf Pro NAS internal hard drive",    brand: "Seagate",        model: "IronWolf Pro" },
-  { q: "Seagate Exos enterprise internal hard drive",     brand: "Seagate",        model: "Exos"         },
-  { q: "Toshiba N300 NAS internal hard drive",            brand: "Toshiba",        model: "N300"         },
-  { q: "Toshiba MG enterprise NAS internal hard drive",   brand: "Toshiba",        model: "MG"           },
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const MIN_CREDITS_REQUIRED = 12;   // Abort run if fewer credits than this remain
+const MIN_PRICE_USD        = 30;
+const MAX_PRICE_USD        = 700;
+const MAX_DRIVES_DISPLAY   = 20;
+const QUERY_DELAY_MS       = 900;  // Polite delay between API calls
+
+// Trusted retailer substrings (checked AFTER the deny list)
+const ALLOWED_RETAILERS = [
+  'amazon', 'best buy', 'b&h', 'bhphotovideo',
+  'adorama', 'costco', 'micro center', 'antonline',
 ];
 
-// ── Amazon-specific searches (separate engine) ───────────────────────────────
-// Amazon does not participate in Google Shopping, so we query SerpAPI's
-// Amazon engine directly to get Amazon results.
-const AMAZON_SEARCHES = [
-  { q: "WD Red Plus NAS internal hard drive CMR",         brand: "Western Digital", model: "Red Plus"     },
-  { q: "WD Red Pro NAS internal hard drive",              brand: "Western Digital", model: "Red Pro"      },
-  { q: "WD Gold enterprise hard drive",                   brand: "Western Digital", model: "Gold"         },
-  { q: "Seagate IronWolf NAS internal hard drive",        brand: "Seagate",        model: "IronWolf"     },
-  { q: "Seagate IronWolf Pro NAS hard drive",             brand: "Seagate",        model: "IronWolf Pro" },
-  { q: "Seagate Exos enterprise internal hard drive",     brand: "Seagate",        model: "Exos"         },
-  { q: "Toshiba N300 NAS internal hard drive",            brand: "Toshiba",        model: "N300"         },
-  { q: "Toshiba MG enterprise internal hard drive",       brand: "Toshiba",        model: "MG"           },
+// Explicitly denied — checked FIRST, before the allow list.
+// This is what fixed the Newegg-on-main-list bug from v13.
+const DENIED_RETAILERS = [
+  'newegg', 'walmart', 'wd store', 'ebay', 'poshmark', 'mercari',
+  'orange hardwares', 'tech atlantix', 'serverblink', 'drivestolutions',
+  'disctech', 'avendor', 'pcnation', 'neobits', 'serversupply',
+  'govconnection', 'serverorbit', 'genuinemodules', 'provantage',
+  'shi international', 'journeyed', 'dihuni', 'directdial', 'hssl',
+  'fishersci', 'tiedex', 'wb mason', 'w.b. mason', 'server tech supply',
+  'tristatecamera', 'tour supply', 'serverpartdeals',
 ];
 
-// ── Condition denylist ────────────────────────────────────────────────────────
-// Checked against title, condition field, URL, snippet, and extensions.
-const CONDITION_REJECT = [
-  /\bused\b/i,
-  /\brefurbished\b/i,
-  /\brefurb\b/i,
-  /\brecertified\b/i,
-  /\brenewed\b/i,
-  /\bopen[\s-]?box\b/i,
-  /\bpre[\s-]?owned\b/i,
-  /\bpull(ed)?\b/i,
-  /\bremanufactured\b/i,
-  /\bcertified[\s-]?refurb/i,
-  /\bsurplus\b/i,
-  /\bsecond[\s-]?hand\b/i,
-  /\bwarehouse[\s-]?deal/i,
-  /\bas[\s-]?is\b/i,
-  /\bfor[\s-]?parts\b/i,
-];
-
-const URL_REJECT = [
-  /open-box/i, /openbox/i, /renewed/i, /refurb/i,
-  /recertified/i, /\/used\//i, /warehouse/i, /outlet/i,
-];
-
-function isUsedOrRefurb(item) {
-  const title     = item.title       || "";
-  const condition = item.condition   || "";
-  const snippet   = item.snippet     || item.description || "";
-  const exts      = Array.isArray(item.extensions) ? item.extensions.join(" ") : "";
-  const source    = item.source      || "";  // catches "B&H Used Store", "Amazon Warehouse", etc.
-  const url       = item.link        || item.product_link || item.url || "";
-  const combined  = `${title} ${condition} ${snippet} ${exts} ${source}`;
-  if (CONDITION_REJECT.some(re => re.test(combined))) return true;
-  if (URL_REJECT.some(re => re.test(url)))            return true;
-  if (condition && condition.toLowerCase() !== "new")  return true;
-  return false;
-}
-
-// ── SMR denylist ──────────────────────────────────────────────────────────────
+// SMR drive patterns — reject if title matches any of these.
+// WD Red (base) is SMR; WD Red Plus and WD Red Pro are CMR — handled by
+// the negative lookahead in the first pattern.
 const SMR_PATTERNS = [
-  /\bwd\s+red\b(?!\s+(plus|pro))/i,
-  /\bwd\s+elements\b/i,
-  /\bwd\s+easystore\b/i,
-  /\bseagate\s+expansion\b/i,
-  /\bseagate\s+barracuda\b/i,
-  /\bseagate\s+basic\b/i,
-  /\bmy\s+passport\b/i,
-  /\bmy\s+book\b/i,
-  /\bbackup\s+plus\b/i,
+  { re: /\bWD\s+Red(?!\s+(?:Plus|Pro))/i,   label: 'WD Red base (SMR)'         },
+  { re: /\bWD\s+Blue\b/i,                    label: 'WD Blue (SMR)'             },
+  { re: /\bWD\s+Purple\b/i,                  label: 'WD Purple (SMR)'           },
+  { re: /\bWD\s+Green\b/i,                   label: 'WD Green (SMR)'            },
+  { re: /\bSeagate\s+Barracuda\b/i,          label: 'Barracuda (SMR)'           },
+  { re: /\bSeagate\s+SkyHawk\b/i,            label: 'SkyHawk (SMR)'             },
+  { re: /\bSeagate\s+Pipeline\b/i,           label: 'Pipeline (SMR)'            },
+  { re: /\bSeagate\s+Archive\b/i,            label: 'Archive HDD (SMR)'         },
+  { re: /\bSeagate\s+Expansion\b/i,          label: 'Expansion (external)'      },
+  { re: /\bWD\s+Elements\b/i,                label: 'WD Elements (external)'    },
+  { re: /\bWD\s+Easystore\b/i,               label: 'Easystore (external)'      },
+  { re: /\bToshiba\s+P300\b/i,               label: 'Toshiba P300 (SMR)'        },
+  { re: /\bToshiba\s+L200\b/i,               label: 'Toshiba L200 (SMR)'        },
+  { re: /\bToshiba\s+S300\b/i,               label: 'Toshiba S300 (surveillance)'},
+  { re: /\bSA500\b/i,                         label: 'WD Red SA500 (SSD)'        },
+  { re: /\bSSD\b/i,                           label: 'SSD (not HDD)'             },
+  { re: /\bSolid.?State\b/i,                  label: 'Solid State (not HDD)'     },
+  { re: /\bNVMe\b/i,                          label: 'NVMe (not HDD)'            },
+  { re: /\bM\.2\b/i,                          label: 'M.2 (not HDD)'             },
+  { re: /\bSMR\b/i,                           label: 'SMR explicitly stated'     },
+  { re: /\bShingled\b/i,                      label: 'Shingled (SMR)'            },
 ];
 
-function isSMR(title) {
-  return SMR_PATTERNS.some(re => re.test(title));
-}
-
-// ── Trusted retailers (Google Shopping) ──────────────────────────────────────
-// Walmart excluded: their marketplace makes it impossible to guarantee new condition.
-// Amazon is handled via dedicated Amazon engine searches above.
-const TRUSTED_RETAILERS = [
-  "newegg", "best buy", "bestbuy", "b&h", "bhphoto",
-  "adorama", "costco", "micro center", "microcenter", "antonline",
+// Condition keywords that signal used / refurbished items.
+// For Google Shopping this is the primary defense for trusted retailers.
+// For Amazon this is a safety net on top of the server-side condition filter.
+const CONDITION_KEYWORDS = [
+  'refurb', 'refurbished', 'recertified', 'renewed', 'reconditioned',
+  'open box', 'open-box', 'openbox', 'pre-owned', 'preowned', 'pre owned',
+  'oem pull', 'remanufactured', 'surplus', 'second-hand', 'secondhand',
+  'scratch', 'dent', 'damaged', 'as-is', 'as is', 'grade b', 'grade c',
+  'warehouse deal', '(recertified)', '(renewed)', '(refurbished)', '(used)',
 ];
 
-function isTrusted(source) {
-  return TRUSTED_RETAILERS.some(r => (source || "").toLowerCase().includes(r));
+// Drive model catalog for identification from title text
+const KNOWN_MODELS = [
+  { brand: 'Seagate',          model: 'IronWolf Pro', patterns: [/ironwolf\s+pro/i]             },
+  { brand: 'Seagate',          model: 'IronWolf',     patterns: [/ironwolf(?!\s*pro)/i]          },
+  { brand: 'Seagate',          model: 'Exos',         patterns: [/\bexos\b/i]                   },
+  { brand: 'Western Digital',  model: 'WD Red Pro',   patterns: [/\bred\s+pro\b/i]              },
+  { brand: 'Western Digital',  model: 'WD Red Plus',  patterns: [/\bred\s+plus\b/i]             },
+  { brand: 'Western Digital',  model: 'WD Gold',      patterns: [/\b(?:wd\s+)?gold\b(?!\s+ssd)/i] },
+  { brand: 'Toshiba',          model: 'N300',         patterns: [/\bn300\b/i]                   },
+  { brand: 'Toshiba',          model: 'MG',           patterns: [/\bMG\d{2}/i, /toshiba\s+mg\b/i] },
+];
+
+// ─── QUERIES ──────────────────────────────────────────────────────────────────
+// 6 Google Shopping + 3 Amazon = 9 credits per run
+// 250 credits / 9 = ~27 runs/month = refresh roughly every 27 hours
+
+const GOOGLE_QUERIES = [
+  'Seagate IronWolf NAS internal hard drive',
+  'Seagate IronWolf Pro NAS internal hard drive',
+  'Seagate Exos enterprise internal hard drive',
+  'WD Red Plus NAS internal hard drive CMR',
+  'WD Red Pro NAS internal hard drive',
+  'WD Gold enterprise internal hard drive',
+];
+
+const AMAZON_QUERIES = [
+  // rh=p_n_condition-type:2224371011 forces new-condition at Amazon's level
+  'Seagate IronWolf NAS hard drive',
+  'Seagate Exos enterprise hard drive',
+  'WD Red NAS internal hard drive CMR',
+];
+
+const TOTAL_QUERIES = GOOGLE_QUERIES.length + AMAZON_QUERIES.length;
+
+// ─── PATHS ────────────────────────────────────────────────────────────────────
+const ROOT      = __dirname;
+const DATA_DIR  = path.join(ROOT, 'data');
+const RAW_DIR   = path.join(DATA_DIR, 'raw');
+const LOGS_DIR  = path.join(DATA_DIR, 'logs');
+const PRICES_F  = path.join(DATA_DIR, 'prices.json');
+const RUNLOG_F  = path.join(LOGS_DIR, 'run-log.json');
+
+[DATA_DIR, RAW_DIR, LOGS_DIR].forEach(d => {
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+});
+
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
+const log = msg => console.log(`${new Date().toISOString()}  ${msg}`);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function loadJson(file, fallback) {
+  if (!fs.existsSync(file)) return fallback;
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) { log(`⚠  Could not parse ${path.basename(file)}: ${e.message}`); return fallback; }
 }
 
-function extractCapTB(title) {
-  const m = title.match(/(\d+)\s*TB/i);
-  if (m) {
-    const tb = parseInt(m[1]);
-    return (tb >= 2 && tb <= 32) ? tb : null;
+function extractPrice(item) {
+  if (typeof item.extracted_price === 'number') return item.extracted_price;
+  if (typeof item.price === 'number') return item.price;
+  if (typeof item.price === 'string') {
+    const n = parseFloat(item.price.replace(/[^0-9.]/g, ''));
+    return isNaN(n) ? null : n;
   }
-  const g = title.match(/(\d{4,5})\s*GB/i);
-  if (g) {
-    const tb = Math.round(parseInt(g[1]) / 1000);
-    return (tb >= 2 && tb <= 32) ? tb : null;
+  if (item.price && typeof item.price === 'object') {
+    return item.price.extracted ?? item.price.value ?? null;
   }
   return null;
 }
 
-function retailerLabel(source) {
-  const s = (source || "").toLowerCase();
-  if (s.includes("amazon"))                                    return "Amazon";
-  if (s.includes("newegg"))                                    return "Newegg";
-  if (s.includes("best buy") || s.includes("bestbuy"))         return "Best Buy";
-  if (s.includes("b&h") || s.includes("bhphoto"))              return "B&H";
-  if (s.includes("adorama"))                                   return "Adorama";
-  if (s.includes("walmart"))                                   return "Walmart";
-  if (s.includes("costco"))                                    return "Costco";
-  if (s.includes("micro center") || s.includes("microcenter")) return "Micro Center";
-  if (s.includes("antonline"))                                 return "Antonline";
-  return source || "Unknown";
+function extractCapacityTB(title) {
+  const tb = title.match(/\b(\d+(?:\.\d+)?)\s*TB\b/i);
+  if (tb) return parseFloat(tb[1]);
+  const gb = title.match(/\b(\d{4,6})\s*GB\b/i);
+  if (gb) {
+    const v = parseFloat(gb[1]);
+    if (v >= 1000) return Math.round(v / 1000);
+  }
+  return null;
 }
 
-function cleanName(brand, model, cap) {
-  const bAbbr = brand === "Western Digital" ? "WD" : brand;
-  return `${bAbbr} ${model} ${cap}TB`;
+function identifyModel(title) {
+  for (const { brand, model, patterns } of KNOWN_MODELS) {
+    for (const p of patterns) {
+      if (p.test(title)) return { brand, model };
+    }
+  }
+  return { brand: 'Unknown', model: 'Unknown' };
 }
 
-// ── SerpAPI helpers ───────────────────────────────────────────────────────────
-async function searchGoogleShopping(query) {
-  // condition=new tells Google Shopping to only return new-condition listings at the index level.
-  // This filters used/refurb results before they ever reach our code.
-  const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}&num=40&condition=new`;
-  const res  = await fetch(url);
-  if (!res.ok) throw new Error(`SerpAPI HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+function classifyRetailer(source) {
+  const s = (source || '').toLowerCase().trim();
+  // Deny list checked first — this is what prevents Newegg from slipping through
+  for (const denied of DENIED_RETAILERS) {
+    if (s.includes(denied)) return { ok: false, reason: `Retailer not accepted: ${source}` };
+  }
+  // Allow list
+  for (const allowed of ALLOWED_RETAILERS) {
+    if (s.includes(allowed)) return { ok: true };
+  }
+  return { ok: false, reason: `Retailer unlisted: ${source}` };
+}
+
+function displayRetailer(source) {
+  const s = (source || '').toLowerCase();
+  if (s.includes('amazon'))       return 'Amazon';
+  if (s.includes('best buy'))     return 'Best Buy';
+  if (s.includes('b&h') || s.includes('bhphoto')) return 'B&H Photo';
+  if (s.includes('adorama'))      return 'Adorama';
+  if (s.includes('costco'))       return 'Costco';
+  if (s.includes('micro center')) return 'Micro Center';
+  if (s.includes('antonline'))    return 'Antonline';
+  return source;
+}
+
+// ─── FILTER PIPELINE ─────────────────────────────────────────────────────────
+// Returns { pass: true, drive: {...} } or { pass: false, reason, title, ... }
+
+function filterResult({ title, source, price, url, asin, isAmazonEngine }) {
+  // 1. Retailer (Google Shopping only — Amazon engine results are implicitly Amazon)
+  if (!isAmazonEngine) {
+    const r = classifyRetailer(source);
+    if (!r.ok) return { pass: false, reason: r.reason, title, retailer: source, price, url };
+  }
+
+  // 2. SMR / SSD denylist
+  for (const { re, label } of SMR_PATTERNS) {
+    if (re.test(title)) return { pass: false, reason: `SMR/SSD: ${label}`, title, retailer: source, price, url };
+  }
+
+  // 3. Condition keyword scan
+  const lower = (title || '').toLowerCase();
+  for (const kw of CONDITION_KEYWORDS) {
+    if (lower.includes(kw)) return { pass: false, reason: `Condition keyword: "${kw}"`, title, retailer: source, price, url };
+  }
+
+  // 4. Capacity extraction
+  const capacityTB = extractCapacityTB(title);
+  if (!capacityTB) return { pass: false, reason: 'No capacity detected in title', title, retailer: source, price, url };
+
+  // 5. Price sanity
+  if (!price || price < MIN_PRICE_USD || price > MAX_PRICE_USD) {
+    return { pass: false, reason: `Price out of range: $${price}`, title, retailer: source, price, url };
+  }
+
+  // ── PASS ──────────────────────────────────────────────────────────────────
+  const { brand, model } = identifyModel(title);
+  const retailer = isAmazonEngine ? 'Amazon' : displayRetailer(source);
+  const pricePerTB = +(price / capacityTB).toFixed(2);
+  const shortBrand = brand === 'Western Digital' ? 'WD' : brand;
+
+  return {
+    pass: true,
+    drive: {
+      name:       `${shortBrand} ${model} ${capacityTB}TB`,
+      brand,
+      model,
+      capacity:   capacityTB,
+      price,
+      pricePerTB,
+      retailer,
+      url,
+      asin:       asin || null,
+      source:     isAmazonEngine ? 'amazon_engine' : 'google_shopping',
+    }
+  };
+}
+
+// ─── DEDUPLICATION ────────────────────────────────────────────────────────────
+// Per retailer + model + capacity, keep the lowest price seen in this run.
+function deduplicateDrives(drives) {
+  const map = new Map();
+  for (const d of drives) {
+    const key = `${d.retailer}|${d.model}|${d.capacity}`;
+    if (!map.has(key) || d.price < map.get(key).price) {
+      map.set(key, d);
+    }
+  }
+  return [...map.values()];
+}
+
+// ─── SERPAPI ──────────────────────────────────────────────────────────────────
+async function serpGet(params) {
+  const u = new URL('https://serpapi.com/search.json');
+  Object.entries({ ...params, api_key: SERP_API_KEY }).forEach(([k, v]) => u.searchParams.set(k, v));
+  const res = await fetch(u.toString());
   const data = await res.json();
-  return data.shopping_results || [];
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
 }
 
-async function searchAmazon(query) {
-  // p_n_condition-type%3A6358196011 is Amazon's "New" condition filter node ID.
-  // This restricts results to new-condition listings only at the Amazon level.
-  const url = `https://serpapi.com/search.json?engine=amazon&k=${encodeURIComponent(query)}&api_key=${SERP_API_KEY}&amazon_filters=p_n_condition-type%3A6358196011`;
-  const res  = await fetch(url);
-  if (!res.ok) throw new Error(`SerpAPI Amazon HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
-  const data = await res.json();
-  // Normalize Amazon results to match Google Shopping shape
-  return (data.organic_results || []).map(r => ({
-    title:     r.title || "",
-    price:     r.price?.raw || r.price?.current_price || (typeof r.price === "string" ? r.price : ""),
-    source:    "Amazon",
-    link:      r.link || r.url || "",
-    rating:    r.rating,
-    reviews:   r.reviews_count || r.ratings_count,
-    condition: (r.badge || "").toLowerCase().includes("refurb") ? "refurbished" : "",
-    snippet:   r.snippet || "",
-    extensions: r.extensions || [],
-  }));
+async function checkCredits() {
+  const res = await fetch(`https://serpapi.com/account.json?api_key=${SERP_API_KEY}`);
+  if (!res.ok) throw new Error(`Account check HTTP ${res.status}`);
+  const d = await res.json();
+  // plan_searches_left = credits remaining this month
+  return {
+    remaining: d.plan_searches_left ?? d.searches_per_month,
+    used:      d.this_month_usage ?? 0,
+  };
 }
 
-// ── Item processor (shared by both engines) ───────────────────────────────────
-function processItems(items, search, seen, drives, skipped, isAmazon) {
-  for (const item of items) {
-    const title    = item.title || "";
-    const url      = item.link || item.product_link || item.url || "";
-    const retailer = isAmazon ? "Amazon" : retailerLabel(item.source);
+// ─── EMAIL ────────────────────────────────────────────────────────────────────
+async function sendEmail({ drives, runStatus, today }) {
+  const top = drives.slice(0, 5);
+  const isPartial = runStatus.partial;
+  const best = drives[0];
+  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    // Hard rejects — don't surface to review page
-    if (isSMR(title)) {
-      console.log(`  [SMR skip] ${title}`);
-      continue;
-    }
-    if (isUsedOrRefurb(item)) {
-      console.log(`  [Used/Refurb skip] condition="${item.condition || "none"}" — ${title}`);
-      continue;
-    }
+  let subject;
+  if (isPartial)       subject = `⚠️ NAS Tracker (Partial Data) · ${dateStr}`;
+  else if (best)       subject = `NAS Tracker · Best $${best.pricePerTB.toFixed(2)}/TB · ${dateStr}`;
+  else                 subject = `NAS Tracker · No drives found · ${dateStr}`;
 
-    // Retailer check (Google only — Amazon items always pass)
-    if (!isAmazon && !isTrusted(item.source)) {
-      const cap      = extractCapTB(title);
-      const rawPrice = (item.price || "").toString().replace(/[^0-9.]/g, "");
-      const price    = parseFloat(rawPrice) || null;
-      console.log(`  [Retailer skip] ${item.source || "unknown"} — ${title}`);
-      // Collect for review page if it has a real price and capacity
-      if (cap && price && price >= 20 && price <= 3000) {
-        skipped.push({
-          skipReason: "retailer", title,
-          retailer:  item.source || "Unknown", url,
-          capacity: cap, price,
-          pricePerTB: parseFloat((price / cap).toFixed(2)),
-          brand: search.brand, model: search.model,
-        });
-      }
-      continue;
-    }
+  const cardHtml = top.length === 0
+    ? `<p style="color:#888;text-align:center;padding:24px 0;">No drives passed filters this run.</p>`
+    : top.map((d, i) => `
+    <div style="background:#111827;border:1px solid #374151;border-radius:10px;padding:16px;margin:0 0 10px;">
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td><span style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:1px;text-transform:uppercase;">#${i+1}</span></td>
+        <td align="right"><span style="background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">${d.retailer}</span></td>
+      </tr></table>
+      <div style="font-size:16px;font-weight:700;color:#f9fafb;margin:8px 0 4px;">${d.name}</div>
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td valign="bottom"><span style="font-size:28px;font-weight:800;color:#22c55e;">$${d.pricePerTB.toFixed(2)}</span><span style="font-size:13px;color:#9ca3af;">/TB</span></td>
+        <td align="right" valign="bottom">
+          <div style="font-size:18px;font-weight:700;color:#f9fafb;">$${d.price.toFixed(2)}</div>
+          <div style="font-size:12px;color:#6b7280;">${d.capacity}TB drive</div>
+        </td>
+      </tr></table>
+      <a href="${d.url}" style="display:block;margin-top:12px;background:#1d4ed8;color:#fff;text-decoration:none;text-align:center;padding:10px 16px;border-radius:6px;font-weight:600;font-size:14px;">Buy Now →</a>
+    </div>`).join('');
 
-    // Capacity
-    const cap = extractCapTB(title);
-    if (!cap) {
-      const rawPrice = (item.price || "").toString().replace(/[^0-9.]/g, "");
-      const price    = parseFloat(rawPrice) || null;
-      console.log(`  [No TB] ${title}`);
-      if (price && price >= 20 && price <= 3000) {
-        skipped.push({
-          skipReason: "noTB", title,
-          retailer, url,
-          capacity: null, price, pricePerTB: null,
-          brand: search.brand, model: search.model,
-        });
-      }
-      continue;
-    }
+  const partialBanner = isPartial ? `
+    <div style="background:#431407;border:1px solid #7c2d12;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+      <strong style="color:#fb923c;">⚠️ Partial data this run</strong>
+      <p style="margin:4px 0 0;color:#fdba74;font-size:13px;">${runStatus.queriesCompleted} of ${runStatus.queriesPlanned} queries completed. Some brands may be missing. ${runStatus.creditsRemaining} credits remaining.</p>
+    </div>` : '';
 
-    // Price
-    const rawPrice = (item.price || "").toString().replace(/[^0-9.]/g, "");
-    const price    = parseFloat(rawPrice) || null;
-    if (!price || price < 20 || price > 3000) {
-      console.log(`  [Bad price] $${item.price} — ${title}`);
-      continue;
-    }
-
-    const ptb = price / cap;
-    if (ptb > 150) {
-      console.log(`  [Bad $/TB ${ptb.toFixed(2)}] ${title}`);
-      continue;
-    }
-
-    const name = cleanName(search.brand, search.model, cap);
-    const key  = `${search.model}-${cap}-${retailer}`;
-    if (seen.has(key)) {
-      const existing = drives.find(d => `${d.model}-${d.capacity}-${d.retailer}` === key);
-      if (existing && price < existing.price) {
-        existing.price      = parseFloat(price.toFixed(2));
-        existing.pricePerTB = parseFloat(ptb.toFixed(2));
-        existing.url        = url || existing.url;
-      }
-      continue;
-    }
-    seen.add(key);
-
-    drives.push({
-      name, brand: search.brand, model: search.model,
-      capacity: cap,
-      price:      parseFloat(price.toFixed(2)),
-      pricePerTB: parseFloat(ptb.toFixed(2)),
-      retailer, url,
-      rating:  item.rating  || null,
-      reviews: item.reviews || null,
-    });
-    console.log(`  ✓ ${name} — $${price} ($${ptb.toFixed(2)}/TB) at ${retailer}`);
-  }
-}
-
-// ── Main fetch orchestrator ───────────────────────────────────────────────────
-async function fetchAllDrives() {
-  const seen    = new Set();
-  const drives  = [];
-  const skipped = [];
-
-  for (const search of SEARCHES) {
-    console.log(`\n[Google] Searching: "${search.q}"`);
-    try {
-      const items = await searchGoogleShopping(search.q);
-      console.log(`  → ${items.length} raw results`);
-      processItems(items, search, seen, drives, skipped, false);
-    } catch (e) { console.error(`  ✗ ${e.message}`); }
-    await new Promise(r => setTimeout(r, 500));
-  }
-
-  for (const search of AMAZON_SEARCHES) {
-    console.log(`\n[Amazon] Searching: "${search.q}"`);
-    try {
-      const items = await searchAmazon(search.q);
-      console.log(`  → ${items.length} raw Amazon results`);
-      processItems(items, search, seen, drives, skipped, true);
-    } catch (e) { console.error(`  ✗ Amazon: ${e.message}`); }
-    await new Promise(r => setTimeout(r, 500));
-  }
-
-  // ── Dedup pass ───────────────────────────────────────────────────────────
-  // Both checks run independently on every drive — not if/else.
-  // Check 1 catches same URL from different search queries.
-  // Check 2 catches same product at same price when URLs differ or are absent
-  // (e.g. IronWolf 12TB and N300 12TB both returning the same Amazon listing
-  // at $329.99 but under different product page URLs).
-  const seenURLs     = new Set();
-  const seenPriceSig = new Set();
-
-  const dedupedDrives = drives.filter(d => {
-    // Check 1 — URL match
-    if (d.url) {
-      if (seenURLs.has(d.url)) {
-        console.log(`  [URL dedup] dropped: ${d.name} → ${d.url.slice(0, 80)}`);
-        return false;
-      }
-      seenURLs.add(d.url);
-    }
-
-    // Check 2 — price+capacity+retailer match (always runs)
-    const sig = `${d.retailer}|${d.capacity}|${d.price}`;
-    if (seenPriceSig.has(sig)) {
-      console.log(`  [Price dedup] dropped: ${d.name} ($${d.price}, ${d.capacity}TB at ${d.retailer})`);
-      return false;
-    }
-    seenPriceSig.add(sig);
-
-    return true;
-  });
-
-  dedupedDrives.sort((a, b) => a.pricePerTB - b.pricePerTB);
-  return { drives: dedupedDrives, skipped };
-}
-
-// ── Email builder ─────────────────────────────────────────────────────────────
-function buildEmailHTML(drives, history, dealsLog) {
-  if (!drives.length) return "<p>No drive data available.</p>";
-  const best   = drives[0];
-  const avg    = drives.reduce((s, d) => s + d.pricePerTB, 0) / drives.length;
-  const top3   = drives.slice(0, 3);
-  const recent = history.slice(0, 5);
-  let trendDir = "stable", trendPct = 0;
-  if (recent.length >= 2) {
-    const newest = recent[0].avgPricePerTB;
-    const oldest = recent[recent.length - 1].avgPricePerTB;
-    trendPct = Math.abs(((newest - oldest) / oldest) * 100);
-    trendDir = newest < oldest ? "falling" : newest > oldest ? "rising" : "stable";
-  }
-  const tc = trendDir === "falling" ? "#10b981" : trendDir === "rising" ? "#ef4444" : "#94a3b8";
-  const tl = trendDir === "falling" ? `▼ Down ${trendPct.toFixed(1)}%` : trendDir === "rising" ? `▲ Up ${trendPct.toFixed(1)}%` : "→ Stable";
-  // 25% below market avg — tighter threshold, caps at top 3
-  const hotDeals = drives.filter(d => d.pricePerTB / avg <= 0.75).slice(0, 3);
-  const dealSec = hotDeals.length ? `
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin-bottom:20px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#15803d;font-weight:600;margin-bottom:10px">
-        🔥 Deal Alert — ${hotDeals.length} drive${hotDeals.length > 1 ? "s" : ""} significantly below market average
-      </div>
-      ${hotDeals.map(d => `<div style="margin-bottom:8px;font-size:13px">
-        <strong style="color:#15803d">${d.name}</strong> — $${d.price} (<strong>$${d.pricePerTB.toFixed(2)}/TB</strong>) at ${d.retailer}
-        ${d.url ? ` &mdash; <a href="${d.url}" style="color:#15803d;font-weight:500">View deal →</a>` : ""}</div>`).join("")}
-    </div>` : "";
-  const dCard = (d, hi) => `
-    <div style="border:1px solid ${hi?"#3b82f6":"#e2e8f0"};border-radius:10px;padding:14px;margin-bottom:10px;background:${hi?"#eff6ff":"#fff"}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;color:#1e293b;font-size:14px">${hi?"🏆 ":""}${d.name}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:3px">${d.capacity}TB · ${d.retailer} · CMR</div>
-        </div>
-        <div style="text-align:right;margin-left:12px;white-space:nowrap">
-          <div style="font-size:20px;font-weight:700;color:${hi?"#3b82f6":"#1e293b"}">$${d.pricePerTB.toFixed(2)}<span style="font-size:12px;font-weight:400;color:#64748b">/TB</span></div>
-          <div style="font-size:12px;color:#64748b">$${d.price} total</div>
-        </div>
-      </div>
-      ${d.url?`<div style="margin-top:10px"><a href="${d.url}" style="background:#3b82f6;color:#fff;padding:7px 16px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:500;display:inline-block">View Deal →</a></div>`:""}
-    </div>`;
-  const histRows = recent.map(s=>`<tr><td style="padding:6px 8px;color:#64748b;font-size:12px">${new Date(s.date+"T12:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</td><td style="padding:6px 8px;text-align:right;font-weight:500;color:#1e293b;font-size:12px">$${s.avgPricePerTB.toFixed(2)}/TB avg</td></tr>`).join("");
-  const today = new Date().toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-<div style="max-width:580px;margin:0 auto;padding:20px 10px">
-  <div style="background:#0f172a;border-radius:12px 12px 0 0;padding:22px 28px">
-    <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:5px">NAS Drive Price Tracker</div>
-    <div style="font-size:20px;font-weight:600;color:#f1f5f9;letter-spacing:-.3px">Daily Price Update</div>
-    <div style="font-size:12px;color:#64748b;margin-top:4px">${today} · CMR drives only</div>
+  const html = `<!DOCTYPE html><html>
+<head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:24px 16px;">
+  <div style="text-align:center;padding:16px 0 20px;">
+    <div style="font-size:28px;margin-bottom:4px;">🖴</div>
+    <h1 style="margin:0;font-size:20px;font-weight:800;color:#f9fafb;">NAS Drive Tracker</h1>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">${dateStr} · ${drives.length} drive${drives.length !== 1 ? 's' : ''} tracked</p>
   </div>
-  <div style="background:#1e293b;padding:14px 28px;display:flex;gap:0">
-    <div style="flex:1;border-right:1px solid #334155;padding-right:16px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:4px">Best $/TB today</div>
-      <div style="font-size:22px;font-weight:700;color:#f1f5f9">$${best.pricePerTB.toFixed(2)}</div>
-      <div style="font-size:11px;color:#64748b;margin-top:2px">${best.name}</div>
-    </div>
-    <div style="flex:1;padding:0 16px;border-right:1px solid #334155">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:4px">Market avg $/TB</div>
-      <div style="font-size:22px;font-weight:700;color:#f1f5f9">$${avg.toFixed(2)}</div>
-      <div style="font-size:11px;color:#64748b;margin-top:2px">${drives.length} drives tracked</div>
-    </div>
-    <div style="flex:1;padding-left:16px">
-      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:4px">Trend</div>
-      <div style="font-size:18px;font-weight:700;color:${tc}">${trendDir.charAt(0).toUpperCase()+trendDir.slice(1)}</div>
-      <div style="font-size:11px;color:${tc};margin-top:2px;font-weight:500">${tl}</div>
-    </div>
-  </div>
-  <div style="background:#fff;border-radius:0 0 12px 12px;padding:22px 28px;border:1px solid #e2e8f0;border-top:none">
-    ${dealSec}
-    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:12px;font-weight:500">Top 3 Best Value CMR Drives Today</div>
-    ${top3.map((d,i)=>dCard(d,i===0)).join("")}
-    ${recent.length>=2?`<div style="margin-top:20px">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:12px;font-weight:500">Recent Price History</div>
-      <div style="border:1px solid #e2e8f0;border-radius:10px;padding:16px">
-        <table style="width:100%;border-collapse:collapse">${histRows}</table>
-        <div style="font-size:11px;color:${tc};font-weight:500;text-align:right;margin-top:8px">${trendDir==="falling"?"↓ Market trending down":trendDir==="rising"?"↑ Market trending up":"→ Prices stable"}</div>
-      </div></div>`:""}
-    <div style="border-top:1px solid #f1f5f9;padding-top:16px;margin-top:20px">
-      <p style="font-size:11px;color:#94a3b8;line-height:1.8;margin:0">CMR only · new condition · trusted retailers · v${VERSION}<br>Always confirm price on retailer's page before purchasing.</p>
-    </div>
-  </div>
+  ${partialBanner}
+  <h2 style="margin:0 0 10px;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;">Top Deals by $/TB</h2>
+  ${cardHtml}
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;"><tr>
+    <td width="49%"><a href="${SITE_URL}" style="display:block;background:#111827;border:1px solid #374151;color:#f9fafb;text-decoration:none;text-align:center;padding:12px 8px;border-radius:8px;font-weight:600;font-size:13px;">📊 Full Dashboard</a></td>
+    <td width="2%"></td>
+    <td width="49%"><a href="${SITE_URL}skipped.html" style="display:block;background:#111827;border:1px solid #374151;color:#f9fafb;text-decoration:none;text-align:center;padding:12px 8px;border-radius:8px;font-weight:600;font-size:13px;">🔍 Skipped Items</a></td>
+  </tr></table>
+  <p style="text-align:center;font-size:11px;color:#374151;margin-top:16px;">${runStatus.creditsRemaining} SerpAPI credits remaining · v${VERSION}</p>
 </div></body></html>`;
-}
 
-// ── Send email via EmailJS REST API ──────────────────────────────────────────
-async function sendEmail(drives, history, dealsLog) {
-  const ejsKey = process.env.EJS_PUBLIC_KEY;
-  const ejsSvc = process.env.EJS_SERVICE_ID;
-  const ejsTpl = process.env.EJS_TEMPLATE_ID;
-  const ejsTo  = process.env.ALERT_EMAIL;
-  if (!ejsKey || !ejsSvc || !ejsTpl || !ejsTo) { console.log("Email skipped: EmailJS secrets not set."); return; }
-  if (!drives.length) { console.log("Email skipped: no drives."); return; }
-  const best    = drives[0];
-  const subject = `NAS Drive Update · Best: $${best.pricePerTB.toFixed(2)} per TB · ${new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
-  const html    = buildEmailHTML(drives, history, dealsLog);
-  const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      service_id: ejsSvc, template_id: ejsTpl, user_id: ejsKey,
-      template_params: { to_email: ejsTo, subject, html_body: html },
+      from: 'NAS Tracker <onboarding@resend.dev>',
+      // NOTE: Once you verify a domain at resend.com/domains, replace the line
+      // above with: from: 'NAS Tracker <tracker@yourdomain.com>'
+      to: [ALERT_EMAIL],
+      subject,
+      html,
     }),
   });
-  if (!res.ok) throw new Error(`EmailJS error ${res.status}: ${(await res.text().catch(()=>"")).slice(0,300)}`);
-  console.log(`✉ Email sent to ${ejsTo}`);
-  console.log(`  Subject: ${subject}`);
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Resend API error: ${err}`);
+  }
+  log(`✉  Email sent · "${subject}"`);
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log("=== NAS Drive Price Tracker — Fetch Start ===");
-  console.log(`Script version: v${VERSION}`);
-  console.log(`Run time: ${new Date().toISOString()}`);
+  const startTime = new Date();
+  const today     = startTime.toISOString().split('T')[0];
 
-  let existing = { history: [], dealsLog: [] };
-  if (existsSync("data/prices.json")) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(` NAS Drive Price Tracker  v${VERSION}`);
+  console.log(` ${startTime.toISOString()}`);
+  console.log(`${'='.repeat(60)}\n`);
+
+  const errors          = [];
+  const rawArchive      = {};       // Saved to data/raw/YYYY-MM-DD.json verbatim
+  const acceptedDrives  = [];
+  const skippedItems    = [];
+  let   queriesCompleted = 0;
+  let   creditsRemaining = '?';
+
+  // ── Load existing data ────────────────────────────────────────────────────
+  const existing = loadJson(PRICES_F, { history: [], skipped: [], dealsLog: [], drives: [] });
+  const history  = existing.history  || [];
+  const dealsLog = existing.dealsLog || [];
+
+  // Track first-seen dates so we can badge new drives
+  const firstSeenMap = {};
+  (existing.drives || []).forEach(d => {
+    if (d.firstSeen) firstSeenMap[`${d.model}|${d.capacity}`] = d.firstSeen;
+  });
+  log(`Existing: ${history.length} history entries, ${dealsLog.length} deal log entries`);
+
+  // ── Credit pre-check ─────────────────────────────────────────────────────
+  log('\nChecking SerpAPI credits…');
+  try {
+    const credits = await checkCredits();
+    creditsRemaining = credits.remaining;
+    log(`Credits: ${credits.remaining} remaining (${credits.used} used this month)`);
+
+    if (credits.remaining < MIN_CREDITS_REQUIRED) {
+      log(`✗ Insufficient credits (${credits.remaining} < ${MIN_CREDITS_REQUIRED} required). Aborting.`);
+      await sendLowCreditEmail(credits.remaining);
+      process.exit(0);
+    }
+  } catch (e) {
+    log(`⚠  Credit check failed: ${e.message} — proceeding cautiously`);
+    errors.push(`Credit check failed: ${e.message}`);
+  }
+
+  // ── Google Shopping queries ───────────────────────────────────────────────
+  for (const query of GOOGLE_QUERIES) {
+    log(`\n[Google Shopping] "${query}"`);
+    await sleep(QUERY_DELAY_MS);
     try {
-      const json      = JSON.parse(readFileSync("data/prices.json", "utf8"));
-      existing.history  = Array.isArray(json.history)  ? json.history  : [];
-      existing.dealsLog = Array.isArray(json.dealsLog) ? json.dealsLog : [];
-      console.log(`Loaded existing: ${existing.history.length} history, ${existing.dealsLog.length} deals`);
-    } catch (e) { console.log(`Could not load prices.json (${e.message}) — starting fresh`); }
+      const data    = await serpGet({ engine: 'google_shopping', q: query, gl: 'us', hl: 'en', num: '40' });
+      rawArchive[`google::${query}`] = data;
+      const results = data.shopping_results || [];
+      log(`  → ${results.length} raw results`);
+
+      for (const item of results) {
+        const title  = item.title || '';
+        const source = item.source || item.seller || '';
+        const price  = extractPrice(item);
+        const url    = item.link || '';
+
+        const r = filterResult({ title, source, price, url, isAmazonEngine: false });
+        if (r.pass) {
+          log(`  ✓  ${r.drive.name} — $${r.drive.price} ($${r.drive.pricePerTB}/TB) at ${r.drive.retailer}`);
+          acceptedDrives.push(r.drive);
+        } else {
+          log(`  ✗  [${r.reason}] ${title.slice(0, 80)}`);
+          skippedItems.push({ ...r, timestamp: startTime.toISOString(), query, engine: 'google_shopping' });
+        }
+      }
+      queriesCompleted++;
+    } catch (e) {
+      const msg = `Google "${query}" failed: ${e.message}`;
+      log(`  ✗  ${msg}`);
+      errors.push(msg);
+      if (e.message.includes('run out of searches')) {
+        log('  → Out of credits. Stopping all queries.');
+        break;
+      }
+    }
   }
 
-  const { drives, skipped } = await fetchAllDrives();
-  console.log(`\nDrives accepted: ${drives.length}  |  Skipped for review: ${skipped.length}`);
+  // ── Amazon engine queries ─────────────────────────────────────────────────
+  for (const query of AMAZON_QUERIES) {
+    log(`\n[Amazon Engine] "${query}"`);
+    await sleep(QUERY_DELAY_MS);
+    try {
+      // rh param applies Amazon's own new-condition filter server-side
+      const data    = await serpGet({
+        engine:        'amazon',
+        k:             query,
+        amazon_domain: 'amazon.com',
+        rh:            'p_n_condition-type:2224371011',
+        language:      'en_US',
+      });
+      rawArchive[`amazon::${query}`] = data;
+      const results = data.organic_results || [];
+      log(`  → ${results.length} raw results`);
 
-  if (!drives.length) {
-    console.error("No drives returned — aborting.");
-    process.exit(1);
+      for (const item of results) {
+        const title = item.title || '';
+        const price = extractPrice(item);
+        const url   = item.link_clean || item.link || '';
+        const asin  = item.asin || null;
+
+        const r = filterResult({ title, source: 'Amazon', price, url, asin, isAmazonEngine: true });
+        if (r.pass) {
+          log(`  ✓  ${r.drive.name} — $${r.drive.price} ($${r.drive.pricePerTB}/TB) at Amazon`);
+          acceptedDrives.push(r.drive);
+        } else {
+          log(`  ✗  [${r.reason}] ${title.slice(0, 80)}`);
+          skippedItems.push({ ...r, timestamp: startTime.toISOString(), query, engine: 'amazon' });
+        }
+      }
+      queriesCompleted++;
+    } catch (e) {
+      const msg = `Amazon "${query}" failed: ${e.message}`;
+      log(`  ✗  ${msg}`);
+      errors.push(msg);
+      if (e.message.includes('run out of searches')) {
+        log('  → Out of credits. Stopping all queries.');
+        break;
+      }
+    }
   }
 
-  const today         = new Date().toISOString().slice(0, 10);
-  const avgPricePerTB = parseFloat((drives.reduce((s,d)=>s+d.pricePerTB,0)/drives.length).toFixed(2));
+  // ── Archive raw API responses ─────────────────────────────────────────────
+  const rawFile = path.join(RAW_DIR, `${today}.json`);
+  fs.writeFileSync(rawFile, JSON.stringify({ timestamp: startTime.toISOString(), rawArchive }, null, 2));
+  log(`\n✓  Raw responses archived → data/raw/${today}.json`);
 
-  const historyMap = new Map(existing.history.map(h => [h.date, h]));
-  historyMap.set(today, { date: today, avgPricePerTB });
-  const history = Array.from(historyMap.values()).sort((a,b)=>b.date.localeCompare(a.date)).slice(0, 60);
+  // ── Deduplicate and sort ──────────────────────────────────────────────────
+  const deduped = deduplicateDrives(acceptedDrives);
+  const sorted  = deduped
+    .sort((a, b) => a.pricePerTB - b.pricePerTB)
+    .slice(0, MAX_DRIVES_DISPLAY);
 
-  const best = drives[0];
-  const dealsMap = new Map(existing.dealsLog.map(d => [d.date, d]));
-  dealsMap.set(today, { date: today, name: best.name, capacity: best.capacity, price: best.price, pricePerTB: best.pricePerTB, retailer: best.retailer, url: best.url });
-  const dealsLog = Array.from(dealsMap.values()).sort((a,b)=>b.date.localeCompare(a.date)).slice(0, 30);
+  // Stamp firstSeen date
+  sorted.forEach(d => {
+    const key = `${d.model}|${d.capacity}`;
+    d.firstSeen = firstSeenMap[key] || today;
+  });
 
-  const output = { version: VERSION, updatedAt: new Date().toISOString(), drives, history, dealsLog, skipped };
-  writeFileSync("data/prices.json", JSON.stringify(output, null, 2));
-  console.log(`\n✓ Wrote data/prices.json (v${VERSION})`);
-  console.log(`  ${drives.length} drives | ${history.length} history | ${dealsLog.length} deals | ${skipped.length} in review queue`);
-  console.log(`  Today's #1: ${best.name} @ $${best.pricePerTB.toFixed(2)}/TB ($${best.price}) from ${best.retailer}`);
+  // ── Update history ────────────────────────────────────────────────────────
+  const todayEntry = {
+    date:          today,
+    bestPricePerTB: sorted.length ? sorted[0].pricePerTB : null,
+    avgPricePerTB:  sorted.length
+      ? +(sorted.reduce((s, d) => s + d.pricePerTB, 0) / sorted.length).toFixed(2)
+      : null,
+    driveCount:    sorted.length,
+  };
+  const updatedHistory = [todayEntry, ...history.filter(h => h.date !== today)].slice(0, 30);
 
-  try { await sendEmail(drives, history, dealsLog); }
-  catch (e) { console.error(`✗ Email failed: ${e.message}`); }
+  // ── Run status ────────────────────────────────────────────────────────────
+  const runStatus = {
+    queriesPlanned:    TOTAL_QUERIES,
+    queriesCompleted,
+    partial:           queriesCompleted < TOTAL_QUERIES,
+    creditsRemaining,
+    errors,
+    timestamp:         startTime.toISOString(),
+  };
 
-  console.log("\n=== Fetch Complete ===");
+  // ── Write prices.json ─────────────────────────────────────────────────────
+  const output = {
+    version:   VERSION,
+    updatedAt: startTime.toISOString(),
+    runStatus,
+    drives:    sorted,
+    history:   updatedHistory,
+    skipped:   skippedItems,
+    dealsLog,
+  };
+  fs.writeFileSync(PRICES_F, JSON.stringify(output, null, 2));
+
+  // ── Append to run log ─────────────────────────────────────────────────────
+  const skipCounts = {};
+  skippedItems.forEach(s => {
+    const k = (s.reason || 'unknown').split(':')[0].trim();
+    skipCounts[k] = (skipCounts[k] || 0) + 1;
+  });
+  const runLogEntry = {
+    timestamp: startTime.toISOString(),
+    version:   VERSION,
+    ...runStatus,
+    drivesAccepted: sorted.length,
+    drivesSkipped:  skippedItems.length,
+    skipReasons:    skipCounts,
+  };
+  const runLog = loadJson(RUNLOG_F, []);
+  runLog.unshift(runLogEntry);
+  fs.writeFileSync(RUNLOG_F, JSON.stringify(runLog.slice(0, 60), null, 2));
+
+  console.log(`\n${'─'.repeat(60)}`);
+  log(`Drives accepted : ${sorted.length}`);
+  log(`Drives skipped  : ${skippedItems.length}`);
+  log(`Queries         : ${queriesCompleted}/${TOTAL_QUERIES} completed${runStatus.partial ? ' ⚠ PARTIAL' : ''}`);
+  if (sorted.length) log(`Best deal       : ${sorted[0].name} @ $${sorted[0].pricePerTB.toFixed(2)}/TB from ${sorted[0].retailer}`);
+  log(`prices.json     : written ✓`);
+  log(`run-log.json    : written ✓`);
+
+  // ── Send email ────────────────────────────────────────────────────────────
+  try {
+    await sendEmail({ drives: sorted, runStatus, today });
+  } catch (e) {
+    log(`✗  Email failed: ${e.message}`);
+    errors.push(`Email: ${e.message}`);
+  }
+
+  console.log(`\n${'='.repeat(60)}\n`);
 }
 
-main().catch(e => { console.error("Fatal error:", e); process.exit(1); });
+async function sendLowCreditEmail(remaining) {
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'NAS Tracker <onboarding@resend.dev>',
+        to: [ALERT_EMAIL],
+        subject: '⚠️ NAS Tracker — Low SerpAPI Credits, Run Skipped',
+        html: `<p style="font-family:sans-serif;">NAS Tracker skipped today's run: only <strong>${remaining}</strong> SerpAPI credits remaining (minimum required: ${MIN_CREDITS_REQUIRED}).</p><p style="font-family:sans-serif;">Credits reset on the 1st of each calendar month.</p>`,
+      }),
+    });
+    log('✉  Low-credit warning email sent');
+  } catch (e) {
+    log(`✗  Could not send low-credit email: ${e.message}`);
+  }
+}
+
+main().catch(e => {
+  console.error('\nFATAL:', e);
+  process.exit(1);
+});
