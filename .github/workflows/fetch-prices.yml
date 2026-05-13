@@ -2,11 +2,11 @@ name: Fetch HDD Prices
 
 on:
   schedule:
-    # Runs daily at 14:00 UTC (10am Eastern). Adjust to taste.
-    # 250 credits / 9 queries = ~27 runs/month — comfortably under daily.
     - cron: '0 14 * * *'
   workflow_dispatch:
-    # Allows manual trigger from the Actions tab — use this for the May 12 first run.
+
+permissions:
+  contents: write
 
 jobs:
   fetch:
