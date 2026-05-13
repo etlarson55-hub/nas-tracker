@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-// ─── NAS Drive Price Tracker — fetch-prices.js v2.0.0 ────────────────────────
+// ─── NAS Drive Price Tracker — fetch-prices.js v2.1.0 ────────────────────────
 // Runs via GitHub Actions on a daily schedule.
 // Queries SerpAPI (Google Shopping + Amazon engine), filters to confirmed
 // new-condition drives from trusted retailers, writes prices.json, sends email.
 
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 const fs   = require('fs');
 const path = require('path');
 
@@ -24,6 +24,7 @@ if (!ALERT_EMAIL)    { console.error('FATAL: ALERT_EMAIL not set');    process.e
 const MIN_CREDITS_REQUIRED = 12;   // Abort run if fewer credits than this remain
 const MIN_PRICE_USD        = 30;
 const MAX_PRICE_USD        = 700;
+const MIN_PRICE_PER_TB     = 12;   // Below this is an enclosure, bundle, or data error
 const MAX_DRIVES_DISPLAY   = 20;
 const QUERY_DELAY_MS       = 900;  // Polite delay between API calls
 
@@ -229,8 +230,21 @@ function filterResult({ title, source, price, url, asin, isAmazonEngine }) {
 
   // ── PASS ──────────────────────────────────────────────────────────────────
   const { brand, model } = identifyModel(title);
+
+  // Reject unrecognized models — prevents NAS enclosures, accessories, and
+  // mystery items from slipping through on capacity + price alone.
+  if (brand === 'Unknown') {
+    return { pass: false, reason: 'Unrecognized drive model', title, retailer: source, price, url };
+  }
+
   const retailer = isAmazonEngine ? 'Amazon' : displayRetailer(source);
   const pricePerTB = +(price / capacityTB).toFixed(2);
+
+  // Reject impossibly cheap $/TB — catches enclosures, bundles, and data errors
+  // like the 64TB listing at $3.12/TB that appeared in the first live run.
+  if (pricePerTB < MIN_PRICE_PER_TB) {
+    return { pass: false, reason: `$/TB too low to be a bare drive: $${pricePerTB}/TB`, title, retailer: source, price, url };
+  }
   const shortBrand = brand === 'Western Digital' ? 'WD' : brand;
 
   return {
@@ -292,54 +306,110 @@ async function sendEmail({ drives, runStatus, today }) {
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   let subject;
-  if (isPartial)       subject = `⚠️ NAS Tracker (Partial Data) · ${dateStr}`;
-  else if (best)       subject = `NAS Tracker · Best $${best.pricePerTB.toFixed(2)}/TB · ${dateStr}`;
-  else                 subject = `NAS Tracker · No drives found · ${dateStr}`;
+  if (isPartial)  subject = `⚠️ NAS Tracker (Partial Data) · ${dateStr}`;
+  else if (best)  subject = `NAS Tracker · Best $${best.pricePerTB.toFixed(2)}/TB · ${dateStr}`;
+  else            subject = `NAS Tracker · No drives found · ${dateStr}`;
 
-  const cardHtml = top.length === 0
-    ? `<p style="color:#888;text-align:center;padding:24px 0;">No drives passed filters this run.</p>`
-    : top.map((d, i) => `
-    <div style="background:#111827;border:1px solid #374151;border-radius:10px;padding:16px;margin:0 0 10px;">
-      <table width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td><span style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:1px;text-transform:uppercase;">#${i+1}</span></td>
-        <td align="right"><span style="background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">${d.retailer}</span></td>
-      </tr></table>
-      <div style="font-size:16px;font-weight:700;color:#f9fafb;margin:8px 0 4px;">${d.name}</div>
-      <table width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td valign="bottom"><span style="font-size:28px;font-weight:800;color:#22c55e;">$${d.pricePerTB.toFixed(2)}</span><span style="font-size:13px;color:#9ca3af;">/TB</span></td>
-        <td align="right" valign="bottom">
-          <div style="font-size:18px;font-weight:700;color:#f9fafb;">$${d.price.toFixed(2)}</div>
-          <div style="font-size:12px;color:#6b7280;">${d.capacity}TB drive</div>
-        </td>
-      </tr></table>
-      <a href="${d.url}" style="display:block;margin-top:12px;background:#1d4ed8;color:#fff;text-decoration:none;text-align:center;padding:10px 16px;border-radius:6px;font-weight:600;font-size:14px;">Buy Now →</a>
-    </div>`).join('');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+</head>
+<body bgcolor="#030712" style="margin:0;padding:0;background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#030712" style="background:#030712;">
+  <tr><td align="center" style="padding:24px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
 
-  const partialBanner = isPartial ? `
-    <div style="background:#431407;border:1px solid #7c2d12;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-      <strong style="color:#fb923c;">⚠️ Partial data this run</strong>
-      <p style="margin:4px 0 0;color:#fdba74;font-size:13px;">${runStatus.queriesCompleted} of ${runStatus.queriesPlanned} queries completed. Some brands may be missing. ${runStatus.creditsRemaining} credits remaining.</p>
-    </div>` : '';
+    <!-- Header -->
+    <tr><td align="center" style="padding:16px 0 20px;background:#030712;">
+      <div style="font-size:28px;margin-bottom:6px;">🖴</div>
+      <div style="font-size:20px;font-weight:800;color:#f1f5f9;">NAS Drive Tracker</div>
+      <div style="font-size:13px;color:#64748b;margin-top:4px;">${dateStr} · ${drives.length} drive${drives.length !== 1 ? 's' : ''} tracked</div>
+    </td></tr>
 
-  const html = `<!DOCTYPE html><html>
-<head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;">
-<div style="max-width:520px;margin:0 auto;padding:24px 16px;">
-  <div style="text-align:center;padding:16px 0 20px;">
-    <div style="font-size:28px;margin-bottom:4px;">🖴</div>
-    <h1 style="margin:0;font-size:20px;font-weight:800;color:#f9fafb;">NAS Drive Tracker</h1>
-    <p style="margin:4px 0 0;color:#6b7280;font-size:13px;">${dateStr} · ${drives.length} drive${drives.length !== 1 ? 's' : ''} tracked</p>
-  </div>
-  ${partialBanner}
-  <h2 style="margin:0 0 10px;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1.5px;">Top Deals by $/TB</h2>
-  ${cardHtml}
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;"><tr>
-    <td width="49%"><a href="${SITE_URL}" style="display:block;background:#111827;border:1px solid #374151;color:#f9fafb;text-decoration:none;text-align:center;padding:12px 8px;border-radius:8px;font-weight:600;font-size:13px;">📊 Full Dashboard</a></td>
-    <td width="2%"></td>
-    <td width="49%"><a href="${SITE_URL}skipped.html" style="display:block;background:#111827;border:1px solid #374151;color:#f9fafb;text-decoration:none;text-align:center;padding:12px 8px;border-radius:8px;font-weight:600;font-size:13px;">🔍 Skipped Items</a></td>
-  </tr></table>
-  <p style="text-align:center;font-size:11px;color:#374151;margin-top:16px;">${runStatus.creditsRemaining} SerpAPI credits remaining · v${VERSION}</p>
-</div></body></html>`;
+    ${isPartial ? `
+    <!-- Partial warning -->
+    <tr><td style="padding:0 0 16px;">
+      <table width="100%" cellpadding="12" cellspacing="0" style="background:#431407;border:1px solid #7c2d12;border-radius:8px;">
+        <tr><td>
+          <div style="font-weight:700;color:#fb923c;">⚠️ Partial data this run</div>
+          <div style="font-size:13px;color:#fdba74;margin-top:4px;">${runStatus.queriesCompleted} of ${runStatus.queriesPlanned} queries completed. Some brands may be missing. ${runStatus.creditsRemaining} credits remaining.</div>
+        </td></tr>
+      </table>
+    </td></tr>` : ''}
+
+    <!-- Section label -->
+    <tr><td style="padding:0 0 10px;">
+      <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:1.5px;">Top Deals by $/TB</div>
+    </td></tr>
+
+    <!-- Drive cards -->
+    ${top.length === 0
+      ? `<tr><td style="text-align:center;padding:32px;color:#64748b;background:#0f172a;border:1px solid #1e293b;border-radius:10px;">No drives passed filters this run.</td></tr>`
+      : top.map((d, i) => `
+    <tr><td style="padding:0 0 10px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;">
+        <tr><td style="padding:16px;">
+          <!-- Top row: rank + retailer badge -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="font-size:11px;font-weight:700;color:#475569;letter-spacing:1px;text-transform:uppercase;">#${i + 1}</td>
+              <td align="right"><span style="background:#1e3a5f;color:#93c5fd;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;">${d.retailer}</span></td>
+            </tr>
+          </table>
+          <!-- Drive name -->
+          <div style="font-size:16px;font-weight:700;color:#f1f5f9;margin:8px 0 10px;">${d.name}</div>
+          <!-- Price row -->
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td valign="bottom">
+                <span style="font-size:30px;font-weight:800;color:#22c55e;">$${d.pricePerTB.toFixed(2)}</span>
+                <span style="font-size:13px;color:#64748b;">/TB</span>
+              </td>
+              <td align="right" valign="bottom">
+                <div style="font-size:18px;font-weight:700;color:#f1f5f9;">$${d.price.toFixed(2)}</div>
+                <div style="font-size:12px;color:#64748b;">${d.capacity}TB drive</div>
+              </td>
+            </tr>
+          </table>
+          <!-- Buy button -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">
+            <tr><td align="center" bgcolor="#1d4ed8" style="background:#1d4ed8;border-radius:6px;">
+              <a href="${d.url}" style="display:block;padding:11px 16px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">Buy Now →</a>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>`).join('')}
+
+    <!-- Links row -->
+    <tr><td style="padding:6px 0 0;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="49%" bgcolor="#0f172a" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;">
+            <a href="${SITE_URL}" style="display:block;padding:12px 8px;font-size:13px;font-weight:600;color:#cbd5e1;text-decoration:none;text-align:center;">📊 Full Dashboard</a>
+          </td>
+          <td width="2%"></td>
+          <td width="49%" bgcolor="#0f172a" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;">
+            <a href="${SITE_URL}skipped.html" style="display:block;padding:12px 8px;font-size:13px;font-weight:600;color:#cbd5e1;text-decoration:none;text-align:center;">🔍 Skipped Items</a>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <!-- Footer -->
+    <tr><td align="center" style="padding:16px 0 0;">
+      <div style="font-size:11px;color:#334155;">${runStatus.creditsRemaining} SerpAPI credits remaining · v${VERSION}</div>
+    </td></tr>
+
+  </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
