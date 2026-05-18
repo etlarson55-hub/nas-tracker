@@ -6,7 +6,7 @@
 // Queries SerpAPI (Google Shopping + Amazon engine), filters to confirmed
 // new-condition drives from trusted retailers, writes prices.json, sends email.
 
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 const fs   = require('fs');
 const path = require('path');
 
@@ -84,16 +84,20 @@ const CONDITION_KEYWORDS = [
   'warehouse deal', '(recertified)', '(renewed)', '(refurbished)', '(used)',
 ];
 
-// Drive model catalog for identification from title text
+// Drive model catalog for identification from title text.
+// IMPORTANT: Western Digital model names must NOT include the "WD" prefix here
+// because the name builder prepends shortBrand ("WD") automatically.
+// "WD Red Plus" → name would be "WD WD Red Plus 8TB" — wrong.
+// "Red Plus"    → name becomes  "WD Red Plus 8TB"    — correct.
 const KNOWN_MODELS = [
-  { brand: 'Seagate',          model: 'IronWolf Pro', patterns: [/ironwolf\s+pro/i]             },
-  { brand: 'Seagate',          model: 'IronWolf',     patterns: [/ironwolf(?!\s*pro)/i]          },
-  { brand: 'Seagate',          model: 'Exos',         patterns: [/\bexos\b/i]                   },
-  { brand: 'Western Digital',  model: 'WD Red Pro',   patterns: [/\bred\s+pro\b/i]              },
-  { brand: 'Western Digital',  model: 'WD Red Plus',  patterns: [/\bred\s+plus\b/i]             },
-  { brand: 'Western Digital',  model: 'WD Gold',      patterns: [/\b(?:wd\s+)?gold\b(?!\s+ssd)/i] },
-  { brand: 'Toshiba',          model: 'N300',         patterns: [/\bn300\b/i]                   },
-  { brand: 'Toshiba',          model: 'MG',           patterns: [/\bMG\d{2}/i, /toshiba\s+mg\b/i] },
+  { brand: 'Seagate',         model: 'IronWolf Pro', patterns: [/ironwolf\s+pro/i]              },
+  { brand: 'Seagate',         model: 'IronWolf',     patterns: [/ironwolf(?!\s*pro)/i]           },
+  { brand: 'Seagate',         model: 'Exos',         patterns: [/\bexos\b/i]                    },
+  { brand: 'Western Digital', model: 'Red Pro',      patterns: [/\bred\s+pro\b/i]               },
+  { brand: 'Western Digital', model: 'Red Plus',     patterns: [/\bred\s+plus\b/i]              },
+  { brand: 'Western Digital', model: 'Gold',         patterns: [/\b(?:wd\s+)?gold\b(?!\s+ssd)/i] },
+  { brand: 'Toshiba',         model: 'N300',         patterns: [/\bn300\b/i]                    },
+  { brand: 'Toshiba',         model: 'MG',           patterns: [/\bMG\d{2}/i, /toshiba\s+mg\b/i] },
 ];
 
 // ─── QUERIES ──────────────────────────────────────────────────────────────────
@@ -566,6 +570,11 @@ async function main() {
   fs.writeFileSync(rawFile, JSON.stringify({ timestamp: startTime.toISOString(), rawArchive }, null, 2));
   log(`\n✓  Raw responses archived → data/raw/${today}.json`);
 
+  // Update credits to reflect what was actually spent in this run
+  if (typeof creditsRemaining === 'number') {
+    creditsRemaining = Math.max(0, creditsRemaining - queriesCompleted);
+  }
+
   // ── Deduplicate and sort ──────────────────────────────────────────────────
   const deduped = deduplicateDrives(acceptedDrives);
   const sorted  = deduped
@@ -580,8 +589,10 @@ async function main() {
 
   // ── Update history ────────────────────────────────────────────────────────
   const todayEntry = {
-    date:          today,
+    date:           today,
     bestPricePerTB: sorted.length ? sorted[0].pricePerTB : null,
+    bestDriveName:  sorted.length ? sorted[0].name       : null,
+    bestRetailer:   sorted.length ? sorted[0].retailer   : null,
     avgPricePerTB:  sorted.length
       ? +(sorted.reduce((s, d) => s + d.pricePerTB, 0) / sorted.length).toFixed(2)
       : null,
