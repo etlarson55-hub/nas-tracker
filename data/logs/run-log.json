@@ -1,5 +1,24 @@
 [
   {
+    "timestamp": "2026-06-23T16:23:30.366Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 9,
+    "partial": false,
+    "creditsRemaining": 142,
+    "errors": [],
+    "drivesAccepted": 20,
+    "drivesSkipped": 247,
+    "skipReasons": {
+      "Retailer not accepted": 137,
+      "Retailer unlisted": 65,
+      "No capacity detected in title": 6,
+      "Price out of range": 27,
+      "Unrecognized drive model": 10,
+      "SMR/SSD": 2
+    }
+  },
+  {
     "timestamp": "2026-06-22T18:09:54.563Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
