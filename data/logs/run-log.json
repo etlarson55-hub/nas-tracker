@@ -1,5 +1,26 @@
 [
   {
+    "timestamp": "2026-07-07T16:21:50.986Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 8,
+    "partial": true,
+    "creditsRemaining": 17,
+    "errors": [
+      "Google \"WD Red Pro NAS internal hard drive\" failed: We couldn't get valid results for this search. Please try again later."
+    ],
+    "drivesAccepted": 20,
+    "drivesSkipped": 195,
+    "skipReasons": {
+      "No capacity detected in title": 11,
+      "Retailer unlisted": 58,
+      "Retailer not accepted": 98,
+      "Price out of range": 21,
+      "SMR/SSD": 2,
+      "Unrecognized drive model": 5
+    }
+  },
+  {
     "timestamp": "2026-07-06T16:48:39.796Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
