@@ -1,5 +1,24 @@
 [
   {
+    "timestamp": "2026-08-16T14:15:16.886Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 9,
+    "partial": false,
+    "creditsRemaining": 205,
+    "errors": [],
+    "drivesAccepted": 20,
+    "drivesSkipped": 244,
+    "skipReasons": {
+      "No capacity detected in title": 10,
+      "Retailer not accepted": 124,
+      "Retailer unlisted": 61,
+      "Price out of range": 37,
+      "SMR/SSD": 5,
+      "Unrecognized drive model": 7
+    }
+  },
+  {
     "timestamp": "2026-08-15T14:14:35.461Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
@@ -1121,25 +1140,6 @@
       "Price out of range": 20,
       "SMR/SSD": 2,
       "Unrecognized drive model": 8
-    }
-  },
-  {
-    "timestamp": "2026-06-06T15:07:59.342Z",
-    "version": "2.2.0",
-    "queriesPlanned": 9,
-    "queriesCompleted": 9,
-    "partial": false,
-    "creditsRemaining": 16,
-    "errors": [],
-    "drivesAccepted": 20,
-    "drivesSkipped": 255,
-    "skipReasons": {
-      "Retailer not accepted": 162,
-      "Retailer unlisted": 55,
-      "Price out of range": 19,
-      "No capacity detected in title": 5,
-      "SMR/SSD": 4,
-      "Unrecognized drive model": 10
     }
   }
 ]
