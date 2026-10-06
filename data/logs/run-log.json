@@ -1,5 +1,26 @@
 [
   {
+    "timestamp": "2026-10-06T19:16:13.355Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 8,
+    "partial": true,
+    "creditsRemaining": 44,
+    "errors": [
+      "Google \"WD Red Plus NAS internal hard drive CMR\" failed: We couldn't get valid results for this search. Please try again later."
+    ],
+    "drivesAccepted": 20,
+    "drivesSkipped": 224,
+    "skipReasons": {
+      "No capacity detected in title": 21,
+      "Retailer unlisted": 62,
+      "Retailer not accepted": 101,
+      "Price out of range": 24,
+      "Unrecognized drive model": 9,
+      "SMR/SSD": 7
+    }
+  },
+  {
     "timestamp": "2026-10-04T17:56:11.216Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
@@ -1132,25 +1153,6 @@
       "Price out of range": 31,
       "SMR/SSD": 3,
       "Unrecognized drive model": 6
-    }
-  },
-  {
-    "timestamp": "2026-07-29T15:46:10.472Z",
-    "version": "2.2.0",
-    "queriesPlanned": 9,
-    "queriesCompleted": 9,
-    "partial": false,
-    "creditsRemaining": 88,
-    "errors": [],
-    "drivesAccepted": 20,
-    "drivesSkipped": 245,
-    "skipReasons": {
-      "Retailer unlisted": 69,
-      "Retailer not accepted": 131,
-      "No capacity detected in title": 11,
-      "Price out of range": 24,
-      "Unrecognized drive model": 8,
-      "SMR/SSD": 2
     }
   }
 ]
