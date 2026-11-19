@@ -1,5 +1,24 @@
 [
   {
+    "timestamp": "2026-11-19T21:56:27.219Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 9,
+    "partial": false,
+    "creditsRemaining": 178,
+    "errors": [],
+    "drivesAccepted": 20,
+    "drivesSkipped": 257,
+    "skipReasons": {
+      "No capacity detected in title": 13,
+      "Retailer unlisted": 56,
+      "Retailer not accepted": 150,
+      "Price out of range": 28,
+      "SMR/SSD": 5,
+      "Unrecognized drive model": 5
+    }
+  },
+  {
     "timestamp": "2026-11-18T21:40:37.569Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
@@ -1129,30 +1148,6 @@
       "No capacity detected in title": 5,
       "Unrecognized drive model": 5,
       "SMR/SSD": 1
-    }
-  },
-  {
-    "timestamp": "2026-09-14T18:58:18.292Z",
-    "version": "2.2.0",
-    "queriesPlanned": 9,
-    "queriesCompleted": 5,
-    "partial": true,
-    "creditsRemaining": 227,
-    "errors": [
-      "Google \"Seagate IronWolf Pro NAS internal hard drive\" failed: We couldn't get valid results for this search. Please try again later.",
-      "Google \"WD Red Plus NAS internal hard drive CMR\" failed: We couldn't get valid results for this search. Please try again later.",
-      "Google \"WD Red Pro NAS internal hard drive\" failed: We couldn't get valid results for this search. Please try again later.",
-      "Google \"WD Gold enterprise internal hard drive\" failed: We couldn't get valid results for this search. Please try again later."
-    ],
-    "drivesAccepted": 20,
-    "drivesSkipped": 97,
-    "skipReasons": {
-      "No capacity detected in title": 15,
-      "Retailer unlisted": 25,
-      "Retailer not accepted": 32,
-      "Price out of range": 15,
-      "Unrecognized drive model": 8,
-      "SMR/SSD": 2
     }
   }
 ]
