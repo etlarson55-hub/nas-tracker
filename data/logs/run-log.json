@@ -1,5 +1,24 @@
 [
   {
+    "timestamp": "2026-11-20T21:38:55.456Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 9,
+    "partial": false,
+    "creditsRemaining": 169,
+    "errors": [],
+    "drivesAccepted": 20,
+    "drivesSkipped": 252,
+    "skipReasons": {
+      "No capacity detected in title": 19,
+      "Retailer unlisted": 79,
+      "Retailer not accepted": 116,
+      "Price out of range": 34,
+      "Unrecognized drive model": 3,
+      "SMR/SSD": 1
+    }
+  },
+  {
     "timestamp": "2026-11-19T21:56:27.219Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
@@ -1125,28 +1144,6 @@
       "No capacity detected in title": 6,
       "Price out of range": 16,
       "Unrecognized drive model": 6,
-      "SMR/SSD": 1
-    }
-  },
-  {
-    "timestamp": "2026-09-15T17:51:11.774Z",
-    "version": "2.2.0",
-    "queriesPlanned": 9,
-    "queriesCompleted": 7,
-    "partial": true,
-    "creditsRemaining": 220,
-    "errors": [
-      "Google \"WD Red Pro NAS internal hard drive\" failed: We couldn't get valid results for this search. Please try again later.",
-      "Google \"WD Gold enterprise internal hard drive\" failed: We couldn't get valid results for this search. Please try again later."
-    ],
-    "drivesAccepted": 20,
-    "drivesSkipped": 131,
-    "skipReasons": {
-      "Retailer unlisted": 29,
-      "Retailer not accepted": 67,
-      "Price out of range": 24,
-      "No capacity detected in title": 5,
-      "Unrecognized drive model": 5,
       "SMR/SSD": 1
     }
   }
