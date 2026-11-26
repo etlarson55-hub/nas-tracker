@@ -1,5 +1,24 @@
 [
   {
+    "timestamp": "2026-11-26T22:44:04.885Z",
+    "version": "2.2.0",
+    "queriesPlanned": 9,
+    "queriesCompleted": 9,
+    "partial": false,
+    "creditsRemaining": 115,
+    "errors": [],
+    "drivesAccepted": 20,
+    "drivesSkipped": 256,
+    "skipReasons": {
+      "No capacity detected in title": 20,
+      "Retailer not accepted": 146,
+      "Retailer unlisted": 45,
+      "Price out of range": 38,
+      "Unrecognized drive model": 4,
+      "SMR/SSD": 3
+    }
+  },
+  {
     "timestamp": "2026-11-25T22:53:23.729Z",
     "version": "2.2.0",
     "queriesPlanned": 9,
@@ -1122,27 +1141,6 @@
       "Price out of range": 17,
       "Unrecognized drive model": 5,
       "SMR/SSD": 3
-    }
-  },
-  {
-    "timestamp": "2026-09-21T18:59:47.005Z",
-    "version": "2.2.0",
-    "queriesPlanned": 9,
-    "queriesCompleted": 8,
-    "partial": true,
-    "creditsRemaining": 169,
-    "errors": [
-      "Google \"WD Gold enterprise internal hard drive\" failed: We couldn't get valid results for this search. Please try again later."
-    ],
-    "drivesAccepted": 20,
-    "drivesSkipped": 175,
-    "skipReasons": {
-      "Retailer not accepted": 99,
-      "Retailer unlisted": 33,
-      "Price out of range": 23,
-      "No capacity detected in title": 10,
-      "Unrecognized drive model": 9,
-      "SMR/SSD": 1
     }
   }
 ]
